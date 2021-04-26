@@ -1,0 +1,46 @@
+<!doctype html>
+
+<!--
+  ~ ============================================================================
+  ~
+  ~  Copyright (C) 2006-2016 Talend Inc. - www.talend.com
+  ~
+  ~  This source code is available under agreement available at
+  ~  https://github.com/Talend/data-prep/blob/master/LICENSE
+  ~
+  ~  You should have received a copy of the agreement
+  ~  along with this program; if not, write to Talend SA
+  ~  9 rue Pages 92150 Suresnes, France
+  ~
+  ~ ============================================================================
+  -->
+
+<html ng-strict-di>
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="x-ua-compatible" content="ie=edge">
+        <title>D.prep | (주)디지탈쉽</title>
+        <meta name="viewport" content="width=device-width">
+        <link rel="shortcut icon" type="image/png" href="/assets/images/digitalship-favicon.png">
+        <link href="styles/vendor-519518f23372734d8401.css" rel="stylesheet">
+        <link href="styles/style-519518f23372734d8401.css" rel="stylesheet">
+        <link href="styles/app-519518f23372734d8401.css" rel="stylesheet">
+        <script src="http://localhost:8290/divolte.js" defer async></script>        
+        <script type="text/javascript" src="jquery-1.12.4.min.js"></script>
+        <script type="text/javascript" src="etcCustomEvent.js"></script>        
+        <script type="text/javascript" src="vendor-519518f23372734d8401.js"></script>
+        <script type="text/javascript" src="style-519518f23372734d8401.js"></script>
+        <script type="text/javascript" src="app-519518f23372734d8401.js"></script>
+    </head>
+    <body>
+        <!--[if lt IE 10]>
+        <p class="browsehappy">You are using an <strong>outdated</strong> browser. Please <a href="http://browsehappy.com/">upgrade your browser</a> to improve your experience.</p>
+        <![endif]-->
+
+        <dataprep-app></dataprep-app>
+
+        <script type="text/javascript">
+            fetchConfiguration().then(bootstrapDataPrepApplication.bind(null, ['data-prep']));
+        </script>
+    </body>
+</html>

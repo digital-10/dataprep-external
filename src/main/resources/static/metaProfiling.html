@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="x-ua-compatible" content="ie=edge">
+        <title>D.prep | (주)디지탈쉽</title>
+        <meta name="viewport" content="width=device-width">
+        <link rel="shortcut icon" type="image/png" href="/assets/images/digitalship-favicon.png">
+        <script type="text/javascript" src="jquery-1.12.4.min.js"></script>
+        <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/chart.js@2.9.4/dist/Chart.min.js"></script>
+        <script type="text/javascript">
+        "use strict";
+
+        var metaProfiling = (function() {
+    		function setHeader(data) {
+    			var len = data.columns.length;
+    			var htmlStr = "";
+    		
+    			htmlStr += "<div id='header' class='row' style='background-color: lightgray;'>\n";
+    			for(var i = 0; i < len; i++) {
+    				var name = $.trim(data.columns[i].domain) == "" ? $.trim(data.columns[i].name) : $.trim(data.columns[i].domain);
+    				htmlStr += "<span class='cell'>" + name + "</span>\n";
+    				
+    			}
+    			htmlStr += "</div>\n";
+    			
+    			return htmlStr;
+    		}		
+    		
+    		function setChartDiv(data) {
+    			var len = data.columns.length;
+    			var htmlStr = "";
+    			
+    			htmlStr += "<div id='chart' class='row'>\n";
+    			for(var i = 0; i < len; i++) {
+    				htmlStr += "<span class='cell'></span>\n";
+    			}
+    			htmlStr += "</div>\n";
+    			
+    			return htmlStr;
+    		}
+    		
+    		function setType(data) {
+    			var len = data.columns.length;
+    			var htmlStr = "";
+    			
+    			htmlStr += "<div id='type' class='row' style='background-color: lightgray;'>\n";
+    			for(var i = 0; i < len; i++) {
+    				var type = $.trim(data.columns[i].type).toUpperCase();
+    				htmlStr += "<span class='cell'>" + type + "</span>\n";
+    			}
+    			htmlStr += "</div>\n";
+    			
+    			return htmlStr;
+    		}
+    		
+    		function setDetail1(data) {
+    			var len = data.columns.length;
+    			var htmlStr = "";
+    			
+    			htmlStr += "<div id='detail1' class='row'>\n";
+    			for(var i = 0; i < len; i++) {
+    				var statistics = data.columns[i].statistics;
+    				
+    				htmlStr += "<span class='cell'>\n";				
+    				htmlStr += "<div class='table'>\n";
+    				htmlStr += "<div class='row'>\n";				
+    				htmlStr += "<span class='cellSub colWidth40'>총계</span>\n";
+    				htmlStr += "<span class='cellSub'>" + statistics.count + "</span>\n";
+    				htmlStr += "</div>\n";
+    				htmlStr += "<div class='row'>\n";				
+    				htmlStr += "<span class='cellSub colWidth40'>구별</span>\n";
+    				htmlStr += "<span class='cellSub'>" + statistics.distinctCount + "</span>\n";
+    				htmlStr += "</div>\n";
+    				htmlStr += "<div class='row'>\n";				
+    				htmlStr += "<span class='cellSub colWidth40'>중복</span>\n";
+    				htmlStr += "<span class='cellSub'>" + statistics.duplicateCount + "</span>\n";
+    				htmlStr += "</div>\n";
+    				htmlStr += "<div class='row'>\n";				
+    				htmlStr += "<span class='cellSub colWidth40'>유효</span>\n";
+    				htmlStr += "<span class='cellSub'>" + statistics.valid + "</span>\n";
+    				htmlStr += "</div>\n";
+    				htmlStr += "<div class='row'>\n";				
+    				htmlStr += "<span class='cellSub colWidth40'>공백</span>\n";
+    				htmlStr += "<span class='cellSub'>" + statistics.empty + "</span>\n";
+    				htmlStr += "</div>\n";
+    				htmlStr += "<div class='row'>\n";				
+    				htmlStr += "<span class='cellSub colWidth40'>무효</span>\n";
+    				htmlStr += "<span class='cellSub'>" + statistics.invalid + "</span>\n";
+    				htmlStr += "</div>\n";
+    				htmlStr += "</div>\n";
+    				htmlStr += "</span>\n";
+    			}
+    			htmlStr += "</div>\n";
+    			
+    			return htmlStr;
+    		}
+    		
+    		function setDetail2(data) {
+    			var len = data.columns.length;
+    			var htmlStr = "";
+    			
+    			htmlStr += "<div id='detail2' class='row'>\n";
+    			for(var i = 0; i < len; i++) {
+    				var column = data.columns[i];
+    				var statistics = column.statistics;
+    				
+    				htmlStr += "<span class='cell'>";
+    				if("string" == column.type) {
+    					var textLengthSummary = statistics.textLengthSummary
+    					
+    					htmlStr += "<div class='table'>\n";
+    					htmlStr += "<div class='row'>\n";				
+    					htmlStr += "<span class='cellSub colWidth40'>평균길이</span>\n";
+    					htmlStr += "<span class='cellSub'>" + textLengthSummary.averageLength + "</span>\n";
+    					htmlStr += "</div>\n";
+    					htmlStr += "<div class='row'>\n";				
+    					htmlStr += "<span class='cellSub colWidth40'>최소길이</span>\n";
+    					htmlStr += "<span class='cellSub'>" + textLengthSummary.minimalLength + "</span>\n";
+    					htmlStr += "</div>\n";
+    					htmlStr += "<div class='row'>\n";				
+    					htmlStr += "<span class='cellSub colWidth40'>최대길이</span>\n";
+    					htmlStr += "<span class='cellSub'>" + textLengthSummary.maximalLength + "</span>\n";
+    					htmlStr += "</div>\n";
+    					htmlStr += "</div>\n";
+    				}
+    				else {
+    					var quantiles = statistics.quantiles;
+    					
+    					htmlStr += "<div class='table'>\n";
+    					htmlStr += "<div class='row'>\n";				
+    					htmlStr += "<span class='cellSub colWidth40'>최소</span>\n";
+    					htmlStr += "<span class='cellSub'>" + statistics.min + "</span>\n";
+    					htmlStr += "</div>\n";
+    					htmlStr += "<div class='row'>\n";				
+    					htmlStr += "<span class='cellSub colWidth40'>최대</span>\n";
+    					htmlStr += "<span class='cellSub'>" + statistics.max + "</span>\n";
+    					htmlStr += "</div>\n";
+    					htmlStr += "<div class='row'>\n";				
+    					htmlStr += "<span class='cellSub colWidth40'>평균</span>\n";
+    					htmlStr += "<span class='cellSub'>" + statistics.mean + "</span>\n";
+    					htmlStr += "</div>\n";
+    					htmlStr += "<div class='row'>\n";				
+    					htmlStr += "<span class='cellSub colWidth40'>분산</span>\n";
+    					htmlStr += "<span class='cellSub'>" + statistics.variance + "</span>\n";
+    					htmlStr += "</div>\n";
+    					htmlStr += "<div class='row'>\n";				
+    					htmlStr += "<span class='cellSub colWidth40'>중앙값</span>\n";
+    					htmlStr += "<span class='cellSub'>" + quantiles.median + "</span>\n";
+    					htmlStr += "</div>\n";
+    					htmlStr += "<div class='row'>\n";				
+    					htmlStr += "<span class='cellSub colWidth40'>하위분위수</span>\n";
+    					htmlStr += "<span class='cellSub'>" + quantiles.lowerQuantile + "</span>\n";
+    					htmlStr += "</div>\n";
+    					htmlStr += "<div class='row'>\n";				
+    					htmlStr += "<span class='cellSub colWidth40'>상위분위수</span>\n";
+    					htmlStr += "<span class='cellSub'>" + quantiles.upperQuantile + "</span>\n";
+    					htmlStr += "</div>\n";					
+    					htmlStr += "</div>\n";
+    				}
+    				htmlStr += "</span>\n";
+    			}
+    			htmlStr += "</div>\n";
+    			
+    			return htmlStr;        	
+    		}
+    		
+    		function chartDraw(column, target) {
+    			var ctx = document.getElementById(target).getContext("2d");
+    			
+    			var barChartData = {
+    				labels: [],
+    				datasets: []
+    			};
+    			var type = "bar"
+    			if("string" == column.type) {
+    				type = "horizontalBar"
+    				var frequencyTable = column.statistics.frequencyTable;
+    				barChartData.labels = [
+    					...frequencyTable.filter(fqt => fqt.occurrences > 0).map(function(fqt) {
+    						return fqt.data;
+    					})
+    				];
+    				
+    				barChartData.datasets = [{
+    					label: "occurrences",
+    					fill: false,
+    		            backgroundColor: "#4caf50",
+    		            hoverBackgroundColor: "#3e6940",		            
+    					borderWidth: 1,
+    					data: [
+    						...frequencyTable.filter(fqt => fqt.occurrences > 0).map(function(fqt) {
+    							return fqt.occurrences;
+    					    })
+    					]
+    				}];				
+    			}
+    			else {
+    				var dataType = column.type;
+    				var items = column.statistics.histogram.items;
+ 				
+    				var labels = items.filter(item => item.occurrences > 0).map(function(item, idx, items) {
+    					if(1 == item.range.max - item.range.min && "double" != dataType) {
+    						return item.range.min;
+    					}
+    					else {
+        					if(0 == idx) 
+        						return "최소 ~ " + item.range.max; 
+        					else if(items.length - 1 == idx) 
+        						return item.range.min + " ~ " + "최대"; 
+        					else 
+        						return item.range.min + " ~ " + item.range.max;    						
+    					}
+    				});
+    				
+    				barChartData.labels = labels;
+    				
+    				barChartData.datasets = [{
+    					label: "occurrences",
+    		            backgroundColor: "#03a9f4",
+    		            hoverBackgroundColor: "#3f51b5",
+    					borderWidth: 2,
+    					borderSkipped: "bottom",
+    					minBarLength: 3,
+    					data: [
+    					  ...items.filter(item => item.occurrences > 0).map(function(item) {
+    		                return item.occurrences;
+    		              })
+    					]
+    				}];					
+    			}
+    			
+    			var chart = new Chart(ctx, {
+    				type: type,
+    				data: barChartData,
+    				options: {
+    					responsive: true,
+    					legend: {
+    						display: false
+    					},					
+    		            hover: { mode: "index", intersect: true },
+    		            scales: {
+    		            	yAxes: [ { display: false, stacked: true } ],
+    		            	xAxes: [ { display: false, stacked: true } ]
+    		            },		            
+    		            tooltips: {
+    		                mode: "index",
+    		                intersect: true,
+    		                display: false,
+    		                callbacks: {
+    		                    label: function(tooltipItems, data) {
+    		                    	if(-1 < tooltipItems.label.indexOf("~")) {
+    		                    		$(this._chart.canvas).next("div.table").find("span:eq(0)").find("p:eq(0)").text("범위");
+    		                    	}
+    		                    	else {
+    		                    		$(this._chart.canvas).next("div.table").find("span:eq(0)").find("p:eq(0)").text("값");		                    				                    		
+    		                    	}
+    		                        $(this._chart.canvas).next("div.table").find("span:eq(0)").find("p:eq(1)").text("횟수");
+    		                        
+    		                        $(this._chart.canvas).next("div.table").find("span:eq(1)").find("p:eq(0)").text(tooltipItems.label);
+    		                        $(this._chart.canvas).next("div.table").find("span:eq(1)").find("p:eq(1)").text(tooltipItems.value);		                        
+
+    		                        return;
+    		                    }
+    		                },
+    		                custom: function(tooltipModel) {
+    		                    tooltipModel.opacity = 0;
+    		                }
+    		            }		            
+    				}				
+    			});
+    		}
+    		
+    		function pageInit(data, wsId) {
+				var htmlStr = "<h1 style='text-align: center;'>메타 프로파일링 #WS_ID : " + wsId + "</h1>\n";
+				htmlStr += "<div class='table'>\n";
+				
+				htmlStr += setHeader(data);
+				htmlStr += setChartDiv(data);
+				htmlStr += setType(data);
+				htmlStr += setDetail1(data);
+				htmlStr += setDetail2(data);
+				
+				htmlStr += "</div>\n";
+				$("#content").append(htmlStr);    			
+    			
+    			var canvasWidth = $("#header>span:eq(0)").outerWidth() - 20;
+
+        		$(data.columns).each(function(idx, column) {
+        			var canvasId = "canvas" + idx;
+        			var canvasHtmlStr = "";
+        			
+    				canvasHtmlStr += "<canvas id='" + canvasId +"' style='width: " + canvasWidth + "px;'></canvas>\n";
+    				canvasHtmlStr += "<div class='table'>\n";
+    				canvasHtmlStr += "<div class='row'>\n";
+    				canvasHtmlStr += "<span class='cellSub colWidth15'>\n";
+    				canvasHtmlStr += "<div style='text-align: center; margin-top: 10px;'>\n";
+    				canvasHtmlStr += "<p style='margin: 0px; font-size: 9pt; min-height: 16px;'>&nbsp;</p>\n";
+    				canvasHtmlStr += "<p style='margin: 0px; font-size: 9pt; min-height: 16px;'>&nbsp;</p>\n";
+    				canvasHtmlStr += "</div>\n";
+    				canvasHtmlStr += "</span>\n";
+    				canvasHtmlStr += "<span class='cellSub'>\n";
+    				canvasHtmlStr += "<div style='text-align: center; margin-top: 10px;'>\n";
+    				canvasHtmlStr += "<p style='margin: 0px; font-size: 9pt; min-height: 16px;'>&nbsp;</p>\n";
+    				canvasHtmlStr += "<p style='margin: 0px; font-size: 9pt; min-height: 16px;'>&nbsp;</p>\n";
+    				canvasHtmlStr += "</div>\n";
+    				canvasHtmlStr += "</span>\n";
+    				canvasHtmlStr += "</div>\n";
+    				canvasHtmlStr += "</div>\n";
+    				
+    				$("#chart>span").eq(idx).html(canvasHtmlStr);
+    				
+    				chartDraw(column, canvasId);
+        		});		
+    		}
+    		
+    		function pageInitNotComplete(wsId) {
+    			var htmlStr = "<h1 style='text-align: center;'>메타 프로파일링 #WS_ID : " + wsId + " 은 완료되지 않은 작업입니다.</h1>\n";
+    			$("#content").append(htmlStr);
+    		}
+    		
+    		return {
+    			pageInit: pageInit,
+    			pageInitNotComplete : pageInitNotComplete
+    		}
+        })();
+        
+        function getUrlParams() {
+            var params = {};
+            window.location.search.replace(/[?&]+([^=&]+)=([^&]*)/gi, function(str, key, value) { params[key] = value; });
+            return params;
+        }         
+
+        $(document).ready(function() {
+        	var wsId = getUrlParams().wsId;        
+            
+            $.ajax({
+				url: "/view/meta",
+				tyep: "GET",
+				cache: "false",
+				dataType: "json",
+				data: {
+					wsId: wsId
+				},
+				success: function(data, textStatus, jqXHR) {
+					metaProfiling.pageInit(data, wsId);
+				},
+				error: function(jqXHR, textStatus, errorThrown) {
+					if(jqXHR.responseJSON.reason.indexOf("Not Complete")) {
+						metaProfiling.pageInitNotComplete(wsId);
+					}
+				}
+            });
+        });
+        </script>
+        <style type="text/css">
+/*        
+       	p {
+       		margin-top: 0px;
+       		margin-bottom: 0px;
+       	}
+       	.div_outer {
+       		border: 1px solid black;
+       	}
+*/
+		.table { display: table; width: 100%; }
+		.row { display: table-row; }
+		.cell { display: table-cell; padding: 10px; border-bottom: 1px solid #DDD; min-width: 190px;}
+		.cellSub { display: table-cell; }
+		
+		#content { color: darkslategray; }		
+		#header {
+			text-align: center;
+		    font-weight: bold;
+		    font-size: large;
+		}
+		
+		#type {
+			text-align: center;
+		}
+		#detail1, #detail2 {
+			font-size: small;
+		}
+
+		#header > span { border-top: 1px solid #DDD; }
+		div.row > span.cell:not(:last-child) {
+			border-right: 1px solid #DDD;
+		}		
+
+		.colWidth40 { width: 40%; }
+		.colWidth15 { width: 15%; }
+		
+		canvas {
+		    padding-left: 0;
+		    padding-right: 0;
+		    margin-left: auto;
+		    margin-right: auto;
+		    display: block;
+		}
+
+        </style>        
+    </head>
+	<body id="content">
+	</body>
+</html>

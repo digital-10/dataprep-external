@@ -1,0 +1,11 @@
+{
+  "serverUrl": "http://localhost:9171",
+  "serverSignUrl": "http://localhost:9171",
+  "serverKeepAliveUrl": "",
+  "enableDebug": false,
+  "version": "1.0",
+  "copyRights": "© (주)디지탈쉽. All Rights Reserved",
+  "documentationSearchURL" : "http://digitalship.co.kr",
+  "documentationSearchVersion": "2.1",
+  "documentationSearchLanguage": "ko"
+}
