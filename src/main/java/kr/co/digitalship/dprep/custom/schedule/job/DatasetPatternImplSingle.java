@@ -27,7 +27,7 @@ import kr.co.digitalship.dprep.custom.schedule.vo.SplitExportFileStatusVO;
 @ConditionalOnProperty(name = "schedule.job.dataset.pattern", havingValue = "single")
 public class DatasetPatternImplSingle implements DatasetPattern {
 	
-	//@Value("${dataprep.node.count:0}")
+	@Value("${dataprep.node.count:0}")
 	private int nodeCount;	
 	
 	@Value("${dataprep.node.no:0}")

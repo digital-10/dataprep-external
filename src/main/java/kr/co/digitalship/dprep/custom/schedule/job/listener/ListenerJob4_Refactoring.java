@@ -135,7 +135,7 @@ public class ListenerJob4_Refactoring implements JobListener {
 	
 	@PostConstruct
 	public void init() {
-		if(0 == dependenceWait) {
+		if(0 == nodeCount) {
 			Properties properties = new PropertiesUtil().getProperties();
 
 			nodeCount = Integer.parseInt(properties.getProperty("dataprep.node.count"));
@@ -238,7 +238,9 @@ public class ListenerJob4_Refactoring implements JobListener {
 						if(nodeNo0 == i) continue;
 						
 						jobStatusNode = (List<String>)springRedisTemplateUtil.valueGet("JOB_STATUS_NODE_" + i);
-						if(!jobStatusNode.contains("END") && !jobStatusNode.get(jobStatusNode.size() - 1).equals("DONE")) {
+						if(jobStatusNode.contains("END")) continue; 
+						
+						if(!jobStatusNode.get(jobStatusNode.size() - 1).equals("DONE")) {
 							flag = false;
 							break;
 						}
@@ -273,9 +275,7 @@ public class ListenerJob4_Refactoring implements JobListener {
 				Map<String, ExportResultVO> exportInfo = new HashMap<>(); // 파일명, line 수, 실행시간 (여기수정하면 1번도 수정해야...)	
 				for(int i = 0, len = nodeCount; i < len; i++) {
 					jobStatusNode = (List<String>)springRedisTemplateUtil.valueGet("JOB_STATUS_NODE_" + i);
-					if(jobStatusNode.contains("END")) {
-						continue;
-					}
+					if(jobStatusNode.contains("END")) continue;
 					
 					// 목록 취합...
 					List<ProcessingInfomationVO> exportSingle = null;
@@ -421,8 +421,8 @@ public class ListenerJob4_Refactoring implements JobListener {
 				springRedisTemplateUtil.delete(keys);
 				
 				DprepHttpUtil.counter = counter;
-				
-				// 
+/*								
+				// 파이프라인 쉘 스크립트 호출
 				try {
 					LOGGER.info("QuartzJobListner - sh Execute");
 					shellCmdUtil.execute(wsId);
@@ -430,7 +430,7 @@ public class ListenerJob4_Refactoring implements JobListener {
 				catch (IOException | InterruptedException e) {
 					e.printStackTrace();
 				}
-				
+*/				
 	    		wsId = pcnApiUtil.getNextWsId(token);
 /*	    		
 	    		if(StringUtils.isBlank(wsId) && job1Reschedule) {
@@ -559,8 +559,11 @@ public class ListenerJob4_Refactoring implements JobListener {
 				continue;
 			}
 			
-			gsonArray = gson.fromJson((String)springRedisTemplateUtil.valueGet("ACTIONS_" + i), new TypeToken<JsonArray>() {}.getType());
-			break;
+			String strActions = (String)springRedisTemplateUtil.valueGet("ACTIONS_" + i);
+			if(StringUtils.isNotBlank(strActions)) {
+				gsonArray = gson.fromJson(strActions, new TypeToken<JsonArray>() {}.getType());
+				break;
+			}
     	}
     	
     	// 하둡 저장
@@ -570,7 +573,7 @@ public class ListenerJob4_Refactoring implements JobListener {
     	hadoopUtil.write(fs, gson.toJson(gsonArray), hadoopResultRegBasePath, wsId, "actions.json");
     	
     	if(null != fs) {
-    		try { fs.close(); } catch (IOException e) {}    		
+    		try { fs.close(); } catch (IOException e) {}
     	}
     }    
  

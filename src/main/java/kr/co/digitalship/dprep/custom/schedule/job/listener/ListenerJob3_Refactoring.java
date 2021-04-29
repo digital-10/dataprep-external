@@ -61,7 +61,7 @@ public class ListenerJob3_Refactoring implements JobListener {
 	
 	@PostConstruct
 	public void init() {
-		if(0 == dependenceWait) {
+		if(0 == nodeCount) {
 			Properties properties = new PropertiesUtil().getProperties();
 			
 			nodeCount = Integer.parseInt(properties.getProperty("dataprep.node.count"));

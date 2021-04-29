@@ -123,28 +123,7 @@ public class PcnApiUtil {
 		JsonArray gsonArray = singleton.getWsIds();
 		
 		if(null == gsonArray || 0 == gsonArray.size()) {
-			if(!pcnApiEnabled) {
-//				JsonObject gsonObject = new JsonObject();
-//				gsonObject.addProperty("wsId", "6");
-//				gsonObject.addProperty("percent", "25");
-//				gsonArray.add(gsonObject);
-//
-//				gsonObject = new JsonObject();
-//				gsonObject.addProperty("wsId", "8");
-//				gsonObject.addProperty("percent", "25");    		
-//				gsonArray.add(gsonObject);				
-//				
-//				gsonObject = new JsonObject();
-//				gsonObject.addProperty("wsId", "7");
-//				gsonObject.addProperty("percent", "25");
-//				gsonArray.add(gsonObject);
-				
-//				gsonObject = new JsonObject();
-//				gsonObject.addProperty("wsId", "9");
-//				gsonObject.addProperty("percent", "25");    		
-//				gsonArray.add(gsonObject);
-			}
-			else {
+			if(pcnApiEnabled) {
 		    	AsyncHttpClient asyncHttpClient = Dsl.asyncHttpClient(clientBuilder);
 		    	
 		    	try {    		
@@ -172,9 +151,29 @@ public class PcnApiUtil {
 		    		if(null != asyncHttpClient) {
 		    			try { asyncHttpClient.close(); } catch (IOException e) {}    			
 		    		}
-		    	}			
+		    	}
 			}
-			
+//			else {
+//				JsonObject gsonObject = new JsonObject();
+//				gsonObject.addProperty("wsId", "6");
+//				gsonObject.addProperty("percent", "25");
+//				gsonArray.add(gsonObject);
+//
+//				gsonObject = new JsonObject();
+//				gsonObject.addProperty("wsId", "8");
+//				gsonObject.addProperty("percent", "25");    		
+//				gsonArray.add(gsonObject);				
+//				
+//				gsonObject = new JsonObject();
+//				gsonObject.addProperty("wsId", "7");
+//				gsonObject.addProperty("percent", "25");
+//				gsonArray.add(gsonObject);
+				
+//				gsonObject = new JsonObject();
+//				gsonObject.addProperty("wsId", "9");
+//				gsonObject.addProperty("percent", "25");    		
+//				gsonArray.add(gsonObject);
+//			}
 			gsonArray = singleton.setWsIds(this.sorted(gsonArray, "wsId", "asc"));			
 		}
 		

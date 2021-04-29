@@ -4,7 +4,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.locks.ReentrantLock;
 
-import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -24,7 +23,7 @@ import kr.co.digitalship.dprep.custom.schedule.vo.SplitExportFileStatusVO;
 public class DatasetPatternImplComplex implements DatasetPattern {
 
 	//@Value("${dataprep.node.count:0}")
-	private int nodeCount;	
+	//private int nodeCount;	
 	
 	@Value("${dataprep.node.no:0}")
 	private int nodeNo;
