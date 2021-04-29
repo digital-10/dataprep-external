@@ -6,3 +6,7 @@ src/main/resources/static/app-519518f23372734d8401.js.origin
 src/main/resources/static/b24c8665718e340f5d2d.worker.js.origin
 src/main/resources/static/vendor-519518f23372734d8401.js.origin
 src/main/resources/static/test.html
+target
+.settings
+.project
+.classpath
