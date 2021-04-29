@@ -7,7 +7,7 @@ var repoObj = {};
     
     $(document).ready(function() {
         divolteLoadStatus();
-        dataqulityButtonSetting();
+        dataqulityButtonSetting();        
     }); 
 })(jQuery);
 
@@ -141,6 +141,50 @@ async function dataqulityButtonSetting() {
                         }
                     }                         
                 }
+                                
+                let rightHeaderEl = jQuery("ul.playground-sub-header-right.nav.navbar-nav");                
+                if(rightHeaderEl[0]) {
+                    let addedDialogEl = jQuery("#recommend_dialog");
+                    
+                    if(!jQuery("#btn_recommend_dialog")[0]) {
+                        rightHeaderEl.find("li:eq(2)").after("<li><button id=\"btn_recommend_dialog\" class=\"btn btn-success\" onclick=\"javascript:dialogToggle('recommend_dialog');\">추천</button></li>");                        
+                    }
+
+                    if(!addedDialogEl[0]) {
+                        jQuery("body").append('<div id="recommend_dialog"><p>This is the default dialog which is useful for displaying information. The dialog window can be moved, resized and closed with the &apos;x&apos; icon.</p><p>This is the default dialog which is useful for displaying information. The dialog window can be moved, resized and closed with the &apos;x&apos; icon.</p><p>This is the default dialog which is useful for displaying information. The dialog window can be moved, resized and closed with the &apos;x&apos; icon.</p></div>');    
+                    }
+
+                    if(typeof addedDialogEl.dialog("instance") == "undefined") {
+                        jQuery("#recommend_dialog").dialog({
+                            autoOpen: false, // 초기화시 자동으로 열리지 않음, oepn() 메서드 호출로 열림
+                            classes: {       // 클래스를 추가할 경우
+                                "ui-dialog": "highlight",
+                                "ui-dialog": "ui-corner-all",
+                                "ui-dialog-titlebar": "ui-corner-all"                
+                            },
+                            closeOnEscape: true, // 포커스가 있는 경우 ESC 키로 닫음
+                            draggable: true,     // 드래그 가능 여부
+                            //height: 400, // 높이
+                            hide: { effect: "clip", duration: 300 }, // close animate
+                            //maxHeight: 800, // 최대 높이
+                            //maxWidth: 400,  // 최대 너비
+                            //minHeight: 300, // 최소 높이
+                            //minWidth: 300,  // 최소 너비
+                            position: { // 위치
+                                my: "left+25 top+25",
+                                at: "left bottom",
+                                of: "playground-header"
+                            },
+                            resizable: true, // 리사이즈 가능 여부            
+                            show: { effect: "clip", duration: 300 }, // open animate
+                            title: "추천", // 타이틀
+                            //width: 400, // 너비
+                            resizeStop: function(event, ui) {
+                                $(event.target).css("width", ($("#recommend_dialog").dialog( "widget" ).outerWidth() - 5) + "px");
+                            },            
+                        });                        
+                    }
+                }
             }               
         };
          
@@ -168,12 +212,12 @@ async function divolteLoadStatus() {
     }
     else {
         repoObj.divolteLoadStatus = true;
-        fnReady();
+        fnExecForDivolte();
     }
 }
 
 // divolte 스크립트 로드에 따른 UI 이벤트 전송 및 메뉴 데이터 셋팅.
-async function fnReady() {
+async function fnExecForDivolte() {
     recipeRemoveIcon();
 
     jQuery("body").on("click dblclick", function(e) {
@@ -694,4 +738,14 @@ function apiCallInfoSendToDivolte(method, url, params) {
             console.log(stepId);
         }
     }    
+}
+
+function dialogToggle(id) {
+    var target = jQuery('#' + id);
+    if(target.dialog("isOpen")) {
+        target.dialog("close");        
+    }
+    else {
+        target.dialog("open");        
+    }
 }
