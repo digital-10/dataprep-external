@@ -7,7 +7,7 @@ var repoObj = {};
     
     $(document).ready(function() {
         divolteLoadStatus();
-        dataqulityButtonSetting();        
+        fnObserveDom();        
     }); 
 })(jQuery);
 
@@ -55,150 +55,6 @@ function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-// 메인화면에 메타데이터 메뉴 삽입을 위한 DOM 변화 감지
-async function dataqulityButtonSetting() {
-    // http://localhost:9171/#/home/preparations/Lw==
-    // http://localhost:9171/#/playground/preparation?prepid=dcceee5b-cda1-431f-bae6-426203123607
-    let el = jQuery("#side-panel-nav-datasets");
-    let tryCount = 0;
-    const url = "http://localhost:9172/Metadata/regexes";
-    
-    //while(100 > tryCount && !el[0]) {
-    while(!el[0]) {        
-        await sleep(500);
-        
-        el = jQuery("#side-panel-nav-datasets");
-        //tryCount++;
-    }
-    
-    if((el[0])) {
-        el.after("<li id=\"side-panel-nav-dataqulity\" class=\"\"><a role=\"link\" label=\"메타데이터\"><i class=\"talend-datastore\"></i><p>메타데이터</p></a></li>");
-        
-        el.next("li").find("a").off("click").on("click", function() {
-            var newTab = window.open(url, "_blank");
-            newTab.focus();
-        });
-        
-        let targetNode = document.getElementsByClassName("main-layout");
-        while(!targetNode[0]) {        
-            await sleep(500);
-            
-            el = document.getElementsByClassName("main-layout");
-        }        
-        
-        const config = { attributes: true, childList: true, subtree: true };
-        
-        // 옵션 설명
-        // - childList : 대상 노드의 하위 요소가 추가되거나 제거되는 것을 감지합니다.
-        // - attributes : 대상 노드의 속성 변화를 감지합니다.
-        // - characterData : 대상 노드의 데이터 변화를 감지합니다.
-        // - subtree : 대상의 하위의 하위의 요소들까지의 변화를 감지합니다.
-        // - attributeOldValue : 변화 이전의 속성 값을 기록합니다.
-        // - characterDataOldValue : 변화 이전의 데이터 값을 기록합니다.
-        // - attributeFilter : 모든 속성의 변화를 감지할 필요가 없는 경우 속성을 배열로 설정합니다.
-         
-        // 변화가 감지될 때 실행할 콜백 함수
-        const callback = async function(mutationsList, observer) {
-            let flag = false;
-            
-            for(var i = 0, len = mutationsList.length; i < len; i++) {                  
-                let mutation = mutationsList[i];
-
-                if (mutation.type === 'childList' || mutation.type === 'attributes') {
-                    flag = true;
-                    break;
-                }
-            }
-            
-            if(flag) {
-                observer.disconnect();
-                
-                targetNode = document.getElementsByClassName("main-layout");
-                while(!targetNode[0]) {        
-                    await sleep(500);
-                    
-                    el = document.getElementsByClassName("main-layout");
-                }
-                                   
-                observer = new MutationObserver(callback);
-                observer.observe(targetNode[0], config);
-                
-                let el = jQuery("#side-panel-nav-datasets");
-                let addedEl = jQuery("#side-panel-nav-dataqulity");
-                if(el[0] && !addedEl[0]) {
-                    el.after("<li id=\"side-panel-nav-dataqulity\" class=\"\"><a role=\"link\" label=\"메타데이터\"><i class=\"talend-datastore\"></i><p>메타데이터</p></a></li>");
-                    
-                    el.next("li").find("a").off("click").on("click", function() {
-                        var newTab = window.open(url, "_blank");
-                        newTab.focus();
-                    });
-
-                    var keys = Object.keys(repoObj);
-                    for(var i = 0, len = keys.length; i < len; i++) {
-                        // 2개 항목값은 제외
-                        if("hMap" != keys[i] && "divolteLoadStatus" != keys[i]) {
-                            delete repoObj[keys[i]];
-                        }
-                    }                         
-                }
-                                
-                let rightHeaderEl = jQuery("ul.playground-sub-header-right.nav.navbar-nav");                
-                if(rightHeaderEl[0]) {
-                    let addedDialogEl = jQuery("#recommend_dialog");
-                    
-                    if(!jQuery("#btn_recommend_dialog")[0]) {
-                        rightHeaderEl.find("li:eq(2)").after("<li><button id=\"btn_recommend_dialog\" class=\"btn btn-success\" onclick=\"javascript:dialogToggle('recommend_dialog');\">추천</button></li>");                        
-                    }
-
-                    if(!addedDialogEl[0]) {
-                        jQuery("body").append('<div id="recommend_dialog"><p>This is the default dialog which is useful for displaying information. The dialog window can be moved, resized and closed with the &apos;x&apos; icon.</p><p>This is the default dialog which is useful for displaying information. The dialog window can be moved, resized and closed with the &apos;x&apos; icon.</p><p>This is the default dialog which is useful for displaying information. The dialog window can be moved, resized and closed with the &apos;x&apos; icon.</p></div>');    
-                    }
-
-                    if(typeof addedDialogEl.dialog("instance") == "undefined") {
-                        jQuery("#recommend_dialog").dialog({
-                            autoOpen: false, // 초기화시 자동으로 열리지 않음, oepn() 메서드 호출로 열림
-                            classes: {       // 클래스를 추가할 경우
-                                "ui-dialog": "highlight",
-                                "ui-dialog": "ui-corner-all",
-                                "ui-dialog-titlebar": "ui-corner-all"                
-                            },
-                            closeOnEscape: true, // 포커스가 있는 경우 ESC 키로 닫음
-                            draggable: true,     // 드래그 가능 여부
-                            //height: 400, // 높이
-                            hide: { effect: "clip", duration: 300 }, // close animate
-                            //maxHeight: 800, // 최대 높이
-                            //maxWidth: 400,  // 최대 너비
-                            //minHeight: 300, // 최소 높이
-                            //minWidth: 300,  // 최소 너비
-                            position: { // 위치
-                                my: "left+25 top+25",
-                                at: "left bottom",
-                                of: "playground-header"
-                            },
-                            resizable: true, // 리사이즈 가능 여부            
-                            show: { effect: "clip", duration: 300 }, // open animate
-                            title: "추천", // 타이틀
-                            //width: 400, // 너비
-                            resizeStop: function(event, ui) {
-                                $(event.target).css("width", ($("#recommend_dialog").dialog( "widget" ).outerWidth() - 5) + "px");
-                            },            
-                        });                        
-                    }
-                }
-            }               
-        };
-         
-        // 콜백 함수가 연결된 옵저버 인스턴스를 생성합니다.
-        let observer = new MutationObserver(callback);
-         
-        // 선택한 노드의 변화 감지를 시작합니다.
-        observer.observe(targetNode[0], config);
-         
-        // 아래와 같이, 나중에 관찰을 멈출 수 있습니다.
-        //observer.disconnect();            
-    }
-}
-
 // divolte 서비스 사용에 따른 스크립트 로드 여부 확인, 로드된 경우 true
 async function divolteLoadStatus() {
     let tryCount = 0;
@@ -216,10 +72,177 @@ async function divolteLoadStatus() {
     }
 }
 
+async function fnObserveDom() {
+    let loadCheckEl = jQuery("ui-view.main-layout");
+    // 해당 부분이 정상 load 되었을때 이후 작업을 실행하기 위해
+    while(!loadCheckEl[0]) {
+        await sleep(250);
+        loadCheckEl = jQuery("ui-view.main-layout");
+    }
+
+    // observer 옵션
+    // - attributeOldValue : 변화 이전의 속성 값을 기록합니다.    
+    // - attributeFilter : 모든 속성의 변화를 감지할 필요가 없는 경우 속성을 배열로 설정합니다.    
+    // - attributes : 대상 노드의 속성 변화를 감지합니다.    
+    // - characterData : 대상 노드의 데이터 변화를 감지합니다.    
+    // - characterDataOldValue : 변화 이전의 데이터 값을 기록합니다.    
+    // - childList : 대상 노드의 하위 요소가 추가되거나 제거되는 것을 감지합니다.
+    // - subtree : 대상의 하위의 하위의 요소들까지의 변화를 감지합니다.
+    const config = { attributes: true, childList: true, subtree: true };
+
+    let observeTarget = null;
+    if(jQuery("playground")[0]) {
+        let exportButtonEl = jQuery("#export-button");
+        while(!exportButtonEl[0]) {
+            await sleep(250);
+            exportButtonEl = jQuery("#export-button");
+        }
+
+        observeTarget = jQuery("ul.playground-sub-header-right.nav.navbar-nav");
+        if(0 < jQuery("recipe").find("ul:eq(0)").children().length) {
+            observeTarget = jQuery("recipe").find("ul:eq(0)");
+        }
+    }
+    else {
+        observeTarget = jQuery("pure-side-panel>ul.nav");
+        while(!observeTarget[0]) {
+            await sleep(250);
+            observeTarget = jQuery("pure-side-panel>ul.nav");
+        }
+    }
+    fnObserveTarget(observeTarget);
+
+    const callback = async function(mutationsList, observer) {
+        let observeTargetChangedFlag = false;
+
+        for(var i = 0, len = mutationsList.length; i < len; i++) {
+            let mutation = mutationsList[i];
+
+            if (mutation.type === 'childList' || mutation.type === 'attributes') {
+                observeTargetChangedFlag = true;
+                break;
+            }
+        }
+
+        if(observeTargetChangedFlag) {
+            observer.disconnect();
+
+            // observeTarget 의 변경
+            if(jQuery("playground")[0]) {
+                let exportButtonEl = jQuery("#export-button");
+                while(!exportButtonEl[0]) {
+                    await sleep(250);
+                    exportButtonEl = jQuery("#export-button");
+                }
+
+                observeTarget = jQuery("ul.playground-sub-header-right.nav.navbar-nav");
+                if(0 < jQuery("recipe").find("ul:eq(0)").children().length) {
+                    observeTarget = jQuery("recipe").find("ul:eq(0)");
+                }
+            }
+            else {
+                observeTarget = jQuery("pure-side-panel>ul.nav");
+                while(!observeTarget[0]) {
+                    await sleep(250);
+                    observeTarget = jQuery("pure-side-panel>ul.nav");
+                }
+            }
+            fnObserveTarget(observeTarget);
+
+            observer = new MutationObserver(callback);
+            observer.observe(observeTarget[0], config);
+        }
+    };
+
+    // 선택한 노드의 변화 감지를 시작합니다.
+    let observer = new MutationObserver(callback);
+    observer.observe(observeTarget[0], config);
+}
+
+function fnObserveTarget(observeTarget) {
+    if("pure-side-panel>ul.nav" == observeTarget.selector) {
+        // 메인
+        if(!observeTarget.find("#side-panel-nav-dataqulity")[0]) {
+            observeTarget.append("<li id=\"side-panel-nav-dataqulity\" class=\"\"><a role=\"link\" label=\"메타데이터\"><i class=\"talend-datastore\"></i><p>메타데이터</p></a></li>")
+                          .find("li:last>a").off("click").on("click", function() {
+                              var newTab = window.open(url, "_blank");
+                              newTab.focus();
+                          });
+        }
+
+        let keys = Object.keys(repoObj);
+        for(var i = 0, len = keys.length; i < len; i++) {
+            // 2개 항목값은 제외
+            if("hMap" != keys[i] && "divolteLoadStatus" != keys[i]) {
+                delete repoObj[keys[i]];
+            }
+        }
+    }
+    else if("recipe ul:eq(0)" == observeTarget.selector || "ul.playground-sub-header-right.nav.navbar-nav" == observeTarget.selector) {
+        // 데이터준비 & 데이터
+        if(!jQuery("#playground-preparation-picker-icon")[0]) {
+            // 데이터준비
+            if(!jQuery("i.fa.fa-hand-lizard-o.ddsicon-common")[0]) {
+                let subHeaderRightEl = jQuery("ul.playground-sub-header-right.nav.navbar-nav");
+                if(!subHeaderRightEl.find("#btn_recommend_dialog")[0]) {
+                    subHeaderRightEl.find("#export-data").before("<li><button id=\"btn_recommend_dialog\" class=\"btn btn-success\" onclick=\"javascript:dialogToggle('recommend_dialog');\">추천</button></li>");
+                }
+
+                let recommendDialogEl = jQuery("#recommend_dialog");
+                if(!recommendDialogEl[0]) {
+                    // 해당 내용은 샘플로 추후 다른 내용으로 채워야 함.
+                    jQuery("body").append("<div id=\"recommend_dialog\"><p>This is the default dialog which is useful for displaying information. The dialog window can be moved, resized and closed with the &apos;x&apos; icon.</p><p>This is the default dialog which is useful for displaying information. The dialog window can be moved, resized and closed with the &apos;x&apos; icon.</p><p>This is the default dialog which is useful for displaying information. The dialog window can be moved, resized and closed with the &apos;x&apos; icon.</p></div>");
+                }
+
+                if(typeof recommendDialogEl.dialog("instance") == "undefined") {
+                    jQuery("#recommend_dialog").dialog({
+                        autoOpen: false, // 초기화시 자동으로 열리지 않음, oepn() 메서드 호출로 열림
+                        classes: {       // 클래스를 추가할 경우
+                            "ui-dialog": "highlight",
+                            "ui-dialog": "ui-corner-all",
+                            "ui-dialog-titlebar": "ui-corner-all"
+                        },
+                        closeOnEscape: true, // 포커스가 있는 경우 ESC 키로 닫음
+                        draggable: true,     // 드래그 가능 여부
+                        //height: 400, // 높이
+                        hide: { effect: "clip", duration: 250 }, // close animate
+                        //maxHeight: 800, // 최대 높이
+                        //maxWidth: 400,  // 최대 너비
+                        //minHeight: 300, // 최소 높이
+                        //minWidth: 300,  // 최소 너비
+                        position: { // 위치
+                            my: "left+25 top+25",
+                            at: "left bottom",
+                            of: "playground-header"
+                        },
+                        resizable: true, // 리사이즈 가능 여부
+                        show: { effect: "clip", duration: 250 }, // open animate
+                        title: "추천", // 타이틀
+                        //width: 400, // 너비
+                        resizeStop: function(event, ui) {
+                            jQuery(event.target).css("width", (jQuery("#recommend_dialog").dialog("widget").outerWidth() - 5) + "px");
+                        }
+                    });
+                }
+
+                if(repoObj.divolteLoadStatus) {
+                    let recipeRemoveIcon = observeTarget.find("li a");
+                    if(recipeRemoveIcon[0]) {
+                        recipeRemoveIcon.each(function(idx, obj) {
+                            if(!jQuery(obj).next("remove-icon-click")[0]) {
+                                jQuery(obj).attr("onclick", "eventHandlerDummy(this);");
+                                jQuery(obj).after("<remove-icon-click style=\"flex-basis:0px;\"></remove-icon-click>");
+                            }
+                        });
+                    }
+                }
+            }
+        }
+    }
+}
+
 // divolte 스크립트 로드에 따른 UI 이벤트 전송 및 메뉴 데이터 셋팅.
 async function fnExecForDivolte() {
-    recipeRemoveIcon();
-
     jQuery("body").on("click dblclick", function(e) {
         eventHandler(e);
     });
@@ -426,102 +449,6 @@ async function fnExecForDivolte() {
                 "step_label": step_label,
                 "step_id": step_id
             });            
-        }
-    }
-
-    // 상세화면 좌측 레시피 삭제시 (해당 이벤트는 angular가 동적으로 만들어주는것으로 보이며, click 이벤트에 정상적으로 잡히지 않기 때문에 DOM을 변경하여 돌아갈 수 있게함.)
-    // 마찬가지로 DOM의 변경을 감지하여 레시피가 추가될때도 동일하게 작업해줌.
-    async function recipeRemoveIcon() {
-        // http://localhost:9171/#/playground/preparation?prepid=dcceee5b-cda1-431f-bae6-426203123607
-        let el = jQuery("a.remove-icon");
-        let tryCount = 0;
-        
-        //while(100 > tryCount && !el[0]) {
-        while(!el[0]) {
-            await sleep(500);
-            
-            el = jQuery("a.remove-icon");
-            //tryCount++;
-        }
-
-        if((el[0])) {
-            el.each(function(idx, obj) {
-                jQuery(obj).attr("onclick", "eventHandlerDummy(this);");
-                jQuery(obj).after("<remove-icon-click style=\"flex-basis:0px;\"></remove-icon-click>");
-            });
-            
-            let targetNode = jQuery("recipe").find("ul")[0];
-            while(!targetNode) {
-                await sleep(500);
-                
-                targetNode = jQuery("recipe").find("ul")[0];
-            }            
-            const config = { attributes: true, childList: true, subtree: true };
-            
-            // 옵션 설명
-            // - childList : 대상 노드의 하위 요소가 추가되거나 제거되는 것을 감지합니다.
-            // - attributes : 대상 노드의 속성 변화를 감지합니다.
-            // - characterData : 대상 노드의 데이터 변화를 감지합니다.
-            // - subtree : 대상의 하위의 하위의 요소들까지의 변화를 감지합니다.
-            // - attributeOldValue : 변화 이전의 속성 값을 기록합니다.
-            // - characterDataOldValue : 변화 이전의 데이터 값을 기록합니다.
-            // - attributeFilter : 모든 속성의 변화를 감지할 필요가 없는 경우 속성을 배열로 설정합니다.
-             
-            // 변화가 감지될 때 실행할 콜백 함수
-            const callback = async function(mutationsList, observer) {
-                let flag = false;
-                
-                for(var i = 0, len = mutationsList.length; i < len; i++) {                  
-                    let mutation = mutationsList[i];
-
-                    if (mutation.type === 'childList' || mutation.type === 'attributes') {
-                        flag = true;
-                        break;
-                    }
-                }
-                
-                if(flag) {
-                    observer.disconnect();
-                    
-                    targetNode = jQuery("recipe").find("ul")[0];
-                    while(!targetNode) {
-                        await sleep(500);
-                        
-                        targetNode = jQuery("recipe").find("ul")[0];
-                    }
-                    
-                    observer = new MutationObserver(callback);
-                    observer.observe(targetNode, config);
-                    
-                    let el = jQuery("recipe").find("li a");
-                    if(el[0]) {
-                        el.each(function(idx, obj) {
-                            if(!jQuery(obj).next("remove-icon-click")[0]) {
-                                jQuery(obj).attr("onclick", "eventHandlerDummy(this);");
-                                jQuery(obj).after("<remove-icon-click style=\"flex-basis:0px;\"></remove-icon-click>");
-                            }
-                        });                 
-                    }
-                }               
-            };
-             
-            // 콜백 함수가 연결된 옵저버 인스턴스를 생성합니다.
-            let observer = new MutationObserver(callback);
-             
-            // 선택한 노드의 변화 감지를 시작합니다.
-            observer.observe(targetNode, config);
-             
-            // 아래와 같이, 나중에 관찰을 멈출 수 있습니다.
-            //observer.disconnect();            
-        }
-        else {
-            var keys = Object.keys(repoObj);
-            for(var i = 0, len = keys.length; i < len; i++) {
-                // 2개 항목값은 제외
-                if("hMap" != keys[i] && "divolteLoadStatus" != keys[i]) {
-                    delete repoObj[keys[i]];
-                }
-            }   
         }
     }
 
