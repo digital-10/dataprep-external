@@ -162,6 +162,8 @@ async function fnObserveDom() {
 function fnObserveTarget(observeTarget) {
     if("pure-side-panel>ul.nav" == observeTarget.selector) {
         // 메인
+        const url = "http://localhost:9172/Metadata/regexes";
+        
         if(!observeTarget.find("#side-panel-nav-dataqulity")[0]) {
             observeTarget.append("<li id=\"side-panel-nav-dataqulity\" class=\"\"><a role=\"link\" label=\"메타데이터\"><i class=\"talend-datastore\"></i><p>메타데이터</p></a></li>")
                           .find("li:last>a").off("click").on("click", function() {
@@ -183,19 +185,20 @@ function fnObserveTarget(observeTarget) {
         if(!jQuery("#playground-preparation-picker-icon")[0]) {
             // 데이터준비
             if(!jQuery("i.fa.fa-hand-lizard-o.ddsicon-common")[0]) {
-                let subHeaderRightEl = jQuery("ul.playground-sub-header-right.nav.navbar-nav");
-                if(!subHeaderRightEl.find("#btn_recommend_dialog")[0]) {
-                    subHeaderRightEl.find("#export-data").before("<li><button id=\"btn_recommend_dialog\" class=\"btn btn-success\" onclick=\"javascript:dialogToggle('recommend_dialog');\">추천</button></li>");
-                }
-
-                let recommendDialogEl = jQuery("#recommend_dialog");
+                var recommendDialogEl = jQuery("#recommend_dialog");
                 if(!recommendDialogEl[0]) {
                     // 해당 내용은 샘플로 추후 다른 내용으로 채워야 함.
                     jQuery("body").append("<div id=\"recommend_dialog\"><p>This is the default dialog which is useful for displaying information. The dialog window can be moved, resized and closed with the &apos;x&apos; icon.</p><p>This is the default dialog which is useful for displaying information. The dialog window can be moved, resized and closed with the &apos;x&apos; icon.</p><p>This is the default dialog which is useful for displaying information. The dialog window can be moved, resized and closed with the &apos;x&apos; icon.</p></div>");
+                    recommendDialogEl = jQuery("#recommend_dialog");                    
+                }                
+                
+                let subHeaderRightEl = jQuery("ul.playground-sub-header-right.nav.navbar-nav");
+                if(!subHeaderRightEl.find("#btn_recommend_dialog")[0]) {
+                    subHeaderRightEl.find("#export-data").before("<li><button id=\"btn_recommend_dialog\" class=\"btn btn-success\" onclick=\"javascript:dialogToggle('" + recommendDialogEl.attr("id") + "');\">추천</button></li>");
                 }
 
                 if(typeof recommendDialogEl.dialog("instance") == "undefined") {
-                    jQuery("#recommend_dialog").dialog({
+                    recommendDialogEl.dialog({
                         autoOpen: false, // 초기화시 자동으로 열리지 않음, oepn() 메서드 호출로 열림
                         classes: {       // 클래스를 추가할 경우
                             "ui-dialog": "highlight",
@@ -224,6 +227,12 @@ function fnObserveTarget(observeTarget) {
                         }
                     });
                 }
+                
+                jQuery("#playground-close-icon").on("click", function() {
+                    if(recommendDialogEl.dialog("isOpen")) {
+                        recommendDialogEl.dialog("close");
+                    }            
+                });                
 
                 if(repoObj.divolteLoadStatus) {
                     let recipeRemoveIcon = observeTarget.find("li a");
