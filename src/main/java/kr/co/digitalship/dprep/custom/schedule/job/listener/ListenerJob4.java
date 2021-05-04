@@ -40,13 +40,13 @@ import kr.co.digitalship.dprep.custom.DprepHttpUtil;
 import kr.co.digitalship.dprep.custom.PcnApiUtil;
 import kr.co.digitalship.dprep.custom.PropertiesUtil;
 import kr.co.digitalship.dprep.custom.redis.SpringRedisTemplateUtil;
-import kr.co.digitalship.dprep.custom.schedule.job.Job1Read_Refactoring;
+import kr.co.digitalship.dprep.custom.schedule.job.Job1Read;
 import kr.co.digitalship.dprep.custom.schedule.util.BackgroundAnalysisCustom;
 import kr.co.digitalship.dprep.custom.schedule.util.DprepMetaUtil;
 import kr.co.digitalship.dprep.custom.schedule.util.DprepUtil;
 import kr.co.digitalship.dprep.custom.schedule.util.HadoopUtil;
 import kr.co.digitalship.dprep.custom.schedule.util.QuartzConfigUtil;
-import kr.co.digitalship.dprep.custom.schedule.util.ShellCmdUtil;
+//import kr.co.digitalship.dprep.custom.schedule.util.ShellCmdUtil;
 import kr.co.digitalship.dprep.custom.schedule.vo.CopyTargetPreparationInfoVO;
 import kr.co.digitalship.dprep.custom.schedule.vo.ExportResultVO;
 import kr.co.digitalship.dprep.custom.schedule.vo.MetadataVO;
@@ -54,8 +54,8 @@ import kr.co.digitalship.dprep.custom.schedule.vo.ProcessingInfomationVO;
 
 @Component
 @ConditionalOnBean(type = "kr.co.digitalship.dprep.custom.schedule.QuartzConfig")
-public class ListenerJob4_Refactoring implements JobListener {
-	private static final Logger LOGGER = LoggerFactory.getLogger(ListenerJob4_Refactoring.class);
+public class ListenerJob4 implements JobListener {
+	private static final Logger LOGGER = LoggerFactory.getLogger(ListenerJob4.class);
 	
 	@Value("${dataprep.node.count:0}")
 	private int nodeCount;
@@ -113,15 +113,15 @@ public class ListenerJob4_Refactoring implements JobListener {
     
 	@Autowired
 	private PcnApiUtil pcnApiUtil;
-	
+/*	
 	@Autowired
 	private ShellCmdUtil shellCmdUtil;
+*/	
+	@Autowired
+	private Job1Read job1Read;
 	
 	@Autowired
-	private Job1Read_Refactoring job1Read;
-	
-	@Autowired
-	private ListenerJob1_Refactoring listenerJob1;	
+	private ListenerJob1 listenerJob1;	
 	
 	private Gson gson;
 	
@@ -129,7 +129,7 @@ public class ListenerJob4_Refactoring implements JobListener {
 	
 	private final int jobStepIdx = 3;
 	
-	public ListenerJob4_Refactoring() {
+	public ListenerJob4() {
 		init();
 	}
 	
@@ -381,7 +381,7 @@ public class ListenerJob4_Refactoring implements JobListener {
 				// Meta 프로파일링 완료 Update
 				DataSetMetadata dataSetMetadata = backgroundAnalysisCustom.analyze(datasetIdForIntegratedStatistics);
 				dataSetMetadata.setId(wsId);
-				dataSetMetadata.setName(wsId);							
+				dataSetMetadata.setName(wsId);
 				
 	    		try {
 					hadoopUtil.write(fs, mapper.writeValueAsString(dataSetMetadata), hadoopResultRegBasePath, wsId, "metadata.json");

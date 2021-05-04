@@ -23,13 +23,13 @@ import org.springframework.stereotype.Component;
 import kr.co.digitalship.dprep.custom.PcnApiUtil;
 import kr.co.digitalship.dprep.custom.PropertiesUtil;
 import kr.co.digitalship.dprep.custom.redis.SpringRedisTemplateUtil;
-import kr.co.digitalship.dprep.custom.schedule.job.Job2Create_Refactoring;
+import kr.co.digitalship.dprep.custom.schedule.job.Job2Create;
 import kr.co.digitalship.dprep.custom.schedule.util.QuartzConfigUtil;
 
 @Component
 @ConditionalOnBean(type = "kr.co.digitalship.dprep.custom.schedule.QuartzConfig")
-public class ListenerJob1_Refactoring implements JobListener {
-	private static final Logger LOGGER = LoggerFactory.getLogger(ListenerJob1_Refactoring.class);
+public class ListenerJob1 implements JobListener {
+	private static final Logger LOGGER = LoggerFactory.getLogger(ListenerJob1.class);
 	
 	@Value("${dataprep.node.count:0}")
 	private int nodeCount;
@@ -53,14 +53,14 @@ public class ListenerJob1_Refactoring implements JobListener {
 	private PcnApiUtil pcnApiUtil;	
 
 	@Autowired
-	private Job2Create_Refactoring job2Create;
+	private Job2Create job2Create;
 	
 	@Autowired
-	private ListenerJob2_Refactoring listenerJob2;
+	private ListenerJob2 listenerJob2;
 	
 	private final int jobStepIdx = 0;	
 	
-	public ListenerJob1_Refactoring() {
+	public ListenerJob1() {
 		init();
 	}
 	

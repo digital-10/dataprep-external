@@ -15,9 +15,7 @@ import org.springframework.scheduling.quartz.SpringBeanJobFactory;
 import kr.co.digitalship.dprep.custom.PropertiesUtil;
 import kr.co.digitalship.dprep.custom.schedule.job.Job0CacheDelete;
 import kr.co.digitalship.dprep.custom.schedule.job.Job1Read;
-import kr.co.digitalship.dprep.custom.schedule.job.Job1Read_Refactoring;
 import kr.co.digitalship.dprep.custom.schedule.job.listener.ListenerJob1;
-import kr.co.digitalship.dprep.custom.schedule.job.listener.ListenerJob1_Refactoring;
 import kr.co.digitalship.dprep.custom.schedule.util.QuartzConfigUtil;
 
 @Configuration
@@ -40,10 +38,10 @@ public class QuartzConfig {
 	private Job0CacheDelete job0CacheDelete;	
 	
 	@Autowired
-	private Job1Read_Refactoring job1Read;
+	private Job1Read job1Read;
 	
 	@Autowired
-	private ListenerJob1_Refactoring listenerJob1;
+	private ListenerJob1 listenerJob1;
 	
 	@Bean
 	public SpringBeanJobFactory springBeanJobFactory () {

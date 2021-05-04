@@ -17,13 +17,13 @@ import org.springframework.stereotype.Component;
 
 import kr.co.digitalship.dprep.custom.PropertiesUtil;
 import kr.co.digitalship.dprep.custom.redis.SpringRedisTemplateUtil;
-import kr.co.digitalship.dprep.custom.schedule.job.Job3ExportSingle_Refactoring;
+import kr.co.digitalship.dprep.custom.schedule.job.Job3ExportSingle;
 import kr.co.digitalship.dprep.custom.schedule.util.QuartzConfigUtil;
 
 @Component
 @ConditionalOnBean(type = "kr.co.digitalship.dprep.custom.schedule.QuartzConfig")
-public class ListenerJob2_Refactoring implements JobListener {
-	private static final Logger LOGGER = LoggerFactory.getLogger(ListenerJob2_Refactoring.class);
+public class ListenerJob2 implements JobListener {
+	private static final Logger LOGGER = LoggerFactory.getLogger(ListenerJob2.class);
 	
 	@Value("${dataprep.node.no:0}")
 	private int nodeNo;
@@ -35,14 +35,14 @@ public class ListenerJob2_Refactoring implements JobListener {
 	private SpringRedisTemplateUtil springRedisTemplateUtil;
 	
 	@Autowired
-	private Job3ExportSingle_Refactoring job3ExportSingle;
+	private Job3ExportSingle job3ExportSingle;
 	
 	@Autowired
-	private ListenerJob3_Refactoring listenerJob3;
+	private ListenerJob3 listenerJob3;
 	
 	private final int jobStepIdx = 1;
 	
-	public ListenerJob2_Refactoring() {
+	public ListenerJob2() {
 		init();
 	}
 	

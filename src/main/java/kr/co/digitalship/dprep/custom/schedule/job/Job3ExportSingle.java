@@ -34,8 +34,8 @@ import kr.co.digitalship.dprep.custom.schedule.vo.ProcessingInfomationVO;
 @PersistJobDataAfterExecution
 @DisallowConcurrentExecution
 @ConditionalOnBean(type = "kr.co.digitalship.dprep.custom.schedule.QuartzConfig")
-public class Job3ExportSingle_Refactoring extends CustomQuartzJobBean {
-	private static final Logger LOGGER = LoggerFactory.getLogger(Job3ExportSingle_Refactoring.class);
+public class Job3ExportSingle extends CustomQuartzJobBean {
+	private static final Logger LOGGER = LoggerFactory.getLogger(Job3ExportSingle.class);
 
 	@Value("${dataprep.node.no:0}")
 	private int nodeNo;
@@ -62,7 +62,7 @@ public class Job3ExportSingle_Refactoring extends CustomQuartzJobBean {
 	private SpringRedisTemplateUtil springRedisTemplateUtil;
 	
 	@Autowired
-	private DatasetPattern exportPattern;
+	private AbstractDatasetPattern exportPattern;
 	
 	@Autowired
 	private DprepUtil dprepUtil;
@@ -71,7 +71,7 @@ public class Job3ExportSingle_Refactoring extends CustomQuartzJobBean {
 	
 	private final int jobStepIdx = 2;
 	
-	public Job3ExportSingle_Refactoring() {
+	public Job3ExportSingle() {
 		super();
 		
 		setJobName(this.getClass().getSimpleName());
@@ -171,7 +171,7 @@ public class Job3ExportSingle_Refactoring extends CustomQuartzJobBean {
 					return;
 				}
 				else {
-					listOfProcessingInfomationVO = exportPattern.copyPreparation(listOfDatasetInfo);					
+					listOfProcessingInfomationVO = exportPattern.copyPreparation(listOfDatasetInfo, dependenceWait);					
 				}
 				
 				// 6. 컬럼 데이터 일부 정제 및 도메인 변경 k-weather
@@ -248,7 +248,7 @@ public class Job3ExportSingle_Refactoring extends CustomQuartzJobBean {
 				
 				if(0 < exportSingle.size()) {
 					// 4. Export
-					exportPattern.exportSingle(exportSingle, dependenceWait);					
+					exportPattern.export(exportSingle, dependenceWait);					
 					
 					springRedisTemplateUtil.valueSet("LIST_OF_EXPORT_SINGLE_" + nodeNo, gson.toJson(exportSingle));
 				}

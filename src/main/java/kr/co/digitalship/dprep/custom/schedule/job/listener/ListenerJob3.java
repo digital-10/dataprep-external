@@ -20,14 +20,14 @@ import org.springframework.stereotype.Component;
 
 import kr.co.digitalship.dprep.custom.PropertiesUtil;
 import kr.co.digitalship.dprep.custom.redis.SpringRedisTemplateUtil;
-import kr.co.digitalship.dprep.custom.schedule.job.Job1Read_Refactoring;
-import kr.co.digitalship.dprep.custom.schedule.job.Job4ExportMulti_Refactoring;
+import kr.co.digitalship.dprep.custom.schedule.job.Job1Read;
+import kr.co.digitalship.dprep.custom.schedule.job.Job4ExportMulti;
 import kr.co.digitalship.dprep.custom.schedule.util.QuartzConfigUtil;
 
 @Component
 @ConditionalOnBean(type = "kr.co.digitalship.dprep.custom.schedule.QuartzConfig")
-public class ListenerJob3_Refactoring implements JobListener {
-	private static final Logger LOGGER = LoggerFactory.getLogger(ListenerJob3_Refactoring.class);
+public class ListenerJob3 implements JobListener {
+	private static final Logger LOGGER = LoggerFactory.getLogger(ListenerJob3.class);
 	
 	@Value("${dataprep.node.count:0}")
 	private int nodeCount;	
@@ -42,20 +42,20 @@ public class ListenerJob3_Refactoring implements JobListener {
 	private SpringRedisTemplateUtil springRedisTemplateUtil;
 	
 	@Autowired
-	private Job4ExportMulti_Refactoring job4ExportMulti;
+	private Job4ExportMulti job4ExportMulti;
 	
 	@Autowired
-	private ListenerJob4_Refactoring listenerJob4;
+	private ListenerJob4 listenerJob4;
 	
 	@Autowired
-	private Job1Read_Refactoring job1Read;
+	private Job1Read job1Read;
 	
 	@Autowired
-	private ListenerJob1_Refactoring listenerJob1;	
+	private ListenerJob1 listenerJob1;	
 	
 	private final int jobStepIdx = 2;
 	
-	public ListenerJob3_Refactoring() {
+	public ListenerJob3() {
 		init();
 	}
 	

@@ -469,29 +469,9 @@ public class DprepUtil {
 		String filePath = processingInfomationVO.getFilePath();
 		
 		String hadoopWritePath = hadoopWriteBasePath;
-/*		
-		String wsId = (String)springRedisTemplateUtil.valueGet("WS_ID");
-		
-		if(StringUtils.isNotBlank(wsId)) {
-			hadoopWritePath = hadoopWritePath + "/" + wsId;
-		}
-*/
-/*		
-		String fileYear = this.extractYearFromFileName(fileName);
-		if(StringUtils.isNotBlank(fileYear)) {
-			hadoopWritePath = hadoopWritePath + "/" + fileYear;
-		}
-*/		
+
 		String fullPath = filePath.replace(hadoopReadBasePath, hadoopWritePath);
 		
-/* 확장자 변경만으로는 안되고 처음 dataset 을 만들때 이름부터 재정의가 필요하기 때문에 다음 기회에.
-		if(-1 < fullPath.lastIndexOf(".")) {
-			String ext = fullPath.substring(fullPath.lastIndexOf(".") + 1).toLowerCase();
-			if(!"csv".equals(ext)) {
-				fullPath = fullPath.replace(ext, "csv");
-			}
-		}
-*/
     	Map<String, String> params = new HashMap<>();
     	params.put("path", dprepHttpUtil.getExportPath());    	
 		params.put("exportType", "CSV");
@@ -536,37 +516,16 @@ public class DprepUtil {
     	}
     }
 
-    public void exportMulti(String datasetId, String preparationId, String filePath, String fileName, MetadataVO metadataVO, int waitTime, int idx, boolean flagEnd) {
+    public void exportMulti(ProcessingInfomationVO processingInfomationVO, MetadataVO metadataVO, int waitTime) {
+    	List<String> datasetIds = processingInfomationVO.getDatasetIds();
+		List<String> preparationIds = processingInfomationVO.getPreparationIds();
+		String fileName = processingInfomationVO.getFileNames().get(0);
+		String filePath = processingInfomationVO.getFilePath();    	
+    	
 		String hadoopWritePath = hadoopWriteBasePath;
-/*		
-		String wsId = (String)springRedisTemplateUtil.valueGet("WS_ID");
 		
-		if(StringUtils.isNotBlank(wsId)) {
-			hadoopWritePath = hadoopWritePath + "/" + wsId;
-		}
-*/		
-/*		
-		String fileYear = this.extractYearFromFileName(fileName);
-		if(StringUtils.isNotBlank(fileYear)) {
-			hadoopWritePath = hadoopWritePath + "/" + fileYear;
-		}    	
-*/
 		filePath = filePath.replace(hadoopReadBasePath, hadoopWritePath);
 		
-		int delimiterIdx = filePath.lastIndexOf(".");
-		String filePath1 = filePath.substring(0, delimiterIdx);  // 확장자 이전 경로 + 파일명
-		String filePath2 = filePath.substring(delimiterIdx + 1); // 확장
-		
-    	String fullPath = String.format(filePath1 + "_%s." + filePath2, idx);
-    	
-/* 확장자 변경만으로는 안되고 처음 dataset 을 만들때 이름부터 재정의가 필요하기 때문에 다음 기회에.		
-		if(-1 < fullPath.lastIndexOf(".")) {
-			String ext = fullPath.substring(fullPath.lastIndexOf(".") + 1).toLowerCase();
-			if(!"csv".equals(ext)) {
-				fullPath = fullPath.replace(ext, "csv");
-			}
-		}
-*/			
     	Map<String, String> params = new HashMap<>();
     	params.put("path", dprepHttpUtil.getExportPath());    	
 		params.put("exportType", "CSV");
@@ -574,72 +533,54 @@ public class DprepUtil {
 		params.put("exportParameters.csv_enclosure_character", "");
 		params.put("exportParameters.csv_escape_character", "");
 		params.put("exportParameters.csv_enclosure_mode", "text_only");
-		params.put("exportParameters.csv_encoding", metadataVO.getEncoding());      	
+		params.put("exportParameters.csv_encoding", metadataVO.getEncoding());
     	
-    	FileSystem fs = hadoopUtil.getFs();    	
-		
-		reentrantLock = new ReentrantLock();
-    	boolean isPossibleLock = reentrantLock.isLocked(); // Lock을 걸 수 있는지 확인
-    	
-    	if(!isPossibleLock) {
-			try {
-				reentrantLock.lock();
-				
-				params.put("datasetId", datasetId);
-				params.put("preparationId", preparationId);
-				params.put("exportParameters.fileName", fileName);
-				
-				Response response = dprepHttpUtil.callSyncGet(exportHosts[nodeNo], params, waitTime);
+		FileSystem fs = hadoopUtil.getFs();		
+		try {
+			StringBuffer stringBuffer = new StringBuffer();
+			
+			for (int i = 0, len = preparationIds.size(); i < len; i++) {
+		    	boolean isPossibleLock = reentrantLock.isLocked(); // Lock을 걸 수 있는지 확인	    	
+		    	if(!isPossibleLock) {
+	    			reentrantLock.lock();
 
-				if(flagEnd) {
-					StringBuffer stringBuffer = new StringBuffer();
-					
-					for(int i = 0; i < idx; i++) {
-				    	String splitFilePath = String.format(filePath1 + "_%s." + filePath2, i);						
-						
-						String contentPart = hadoopUtil.getStr(splitFilePath, metadataVO.getEncoding());
-						
-						try {
-							stringBuffer.append(contentPart);
-						} 
-						finally {
-							hadoopUtil.delete(fs, splitFilePath);
-						}
-					}
-					
-					stringBuffer = CommonUtil.readAndExcludeHeader(stringBuffer, response.getResponseBody());
-					
-					hadoopUtil.write(fs, stringBuffer.toString(), filePath);
-					
-					String dstPath = filePath.replace(hadoopWritePath, hadoopCopyWriteBasePath);
-					hadoopUtil.copy(filePath, dstPath); // 복제 (세종대용 복제)					
-				}
-				else {
+					params.put("datasetId", datasetIds.get(i));
+					params.put("preparationId", preparationIds.get(i));
+					params.put("exportParameters.fileName", fileName);	    			
+	    			
+					Response response = dprepHttpUtil.callSyncGet(exportHosts[nodeNo], params, waitTime);
 					// 원본에 없던 임의로 붙은 헤더인 경우 제거
 					if("0".equals(metadataVO.getHeaderNbLines())) {
-						StringBuffer stringBuffer = CommonUtil.readAndExcludeHeader(new StringBuffer(), response.getResponseBody());
-						
-						hadoopUtil.write(fs, stringBuffer.toString(), fullPath);
+						stringBuffer = CommonUtil.readAndExcludeHeader(stringBuffer, response.getResponseBody());
 					}
 					else {
-						hadoopUtil.write(fs, response.getResponseBody(), fullPath);						
-					}					
-				}
-								
-				Thread.sleep(1000);
-			} 
-    		catch (InterruptedException e) {
-				e.printStackTrace();
+						stringBuffer.append(response.getResponseBody());
+					}
+					
+					if(i == len - 1) {
+						hadoopUtil.write(fs, stringBuffer.toString(), filePath);
+						
+						String dstPath = filePath.replace(hadoopWritePath, hadoopCopyWriteBasePath);
+						hadoopUtil.copy(filePath, dstPath); // 복제 (세종대용 복제)						
+					}
+					Thread.sleep(1000);
+					reentrantLock.unlock();
+		    	}
+			}			
+		}
+		catch (InterruptedException e) {
+			e.printStackTrace();
+		}
+		finally {
+			if(reentrantLock.isLocked()) {
+				reentrantLock.unlock();
 			}
-    		finally {
-    			reentrantLock.unlock();
-    			
-    			if(null != fs) {
-    				try { fs.close(); } catch (IOException e) {}
-    			}    			
-    		}
-    	}
-    }
+			
+			if(null != fs) {
+				try { fs.close(); } catch (IOException e) {}
+			}    			
+		}
+    }    
     
     public void deletePreparationById(List<String> ids, int waitTime) {
     	Deque<URIBuilder> uriBuilders = new ConcurrentLinkedDeque<URIBuilder>();

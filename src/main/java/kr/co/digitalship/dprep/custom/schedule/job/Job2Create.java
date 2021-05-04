@@ -41,8 +41,8 @@ import kr.co.digitalship.dprep.custom.schedule.util.HadoopUtil;
 @PersistJobDataAfterExecution
 @DisallowConcurrentExecution
 @ConditionalOnBean(type = "kr.co.digitalship.dprep.custom.schedule.QuartzConfig")
-public class Job2Create_Refactoring extends CustomQuartzJobBean {
-	private static final Logger LOGGER = LoggerFactory.getLogger(Job2Create_Refactoring.class);
+public class Job2Create extends CustomQuartzJobBean {
+	private static final Logger LOGGER = LoggerFactory.getLogger(Job2Create.class);
 
 	@Value("${dataprep.node.no:0}")
 	private int nodeNo;
@@ -72,7 +72,7 @@ public class Job2Create_Refactoring extends CustomQuartzJobBean {
 	
 	private final int jobStepIdx = 1;
 	
-	public Job2Create_Refactoring() {
+	public Job2Create() {
 		super();
 		
 		setJobName(this.getClass().getSimpleName());

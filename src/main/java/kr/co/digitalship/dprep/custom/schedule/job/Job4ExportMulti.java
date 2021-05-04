@@ -29,8 +29,8 @@ import kr.co.digitalship.dprep.custom.schedule.vo.ProcessingInfomationVO;
 @PersistJobDataAfterExecution
 @DisallowConcurrentExecution
 @ConditionalOnBean(type = "kr.co.digitalship.dprep.custom.schedule.QuartzConfig")
-public class Job4ExportMulti_Refactoring extends CustomQuartzJobBean {
-	private static final Logger LOGGER = LoggerFactory.getLogger(Job4ExportMulti_Refactoring.class);
+public class Job4ExportMulti extends CustomQuartzJobBean {
+	private static final Logger LOGGER = LoggerFactory.getLogger(Job4ExportMulti.class);
 
 	@Value("${dataprep.node.no:0}")
 	private int nodeNo;
@@ -48,11 +48,11 @@ public class Job4ExportMulti_Refactoring extends CustomQuartzJobBean {
 	private SpringRedisTemplateUtil springRedisTemplateUtil;
 	
 	@Autowired
-	private DatasetPattern exportPattern;
+	private AbstractDatasetPattern exportPattern;
 	
 	private final int jobStepIdx = 3;	
 	
-	public Job4ExportMulti_Refactoring() {
+	public Job4ExportMulti() {
 		super();
 		
 		setJobName(this.getClass().getSimpleName());
@@ -93,7 +93,7 @@ public class Job4ExportMulti_Refactoring extends CustomQuartzJobBean {
 				List<ProcessingInfomationVO> exportMulti = gson.fromJson(gsonArrayExportMulti, new TypeToken<List<ProcessingInfomationVO>>() {}.getType());
 				
 				if(0 < exportMulti.size()) {
-					exportPattern.exportMulti(exportMulti, dependenceWait);
+					exportPattern.export(exportMulti, dependenceWait);
 					
 					springRedisTemplateUtil.valueSet("LIST_OF_EXPORT_MULTI_" + nodeNo, gson.toJson(exportMulti));
 				}
