@@ -2,7 +2,7 @@
 <configuration scan="true" scanPeriod="30 seconds" debug="true">
 
     <property name="LOG_DIR" value="/Users/motive/Documents/workspace-sts/logs" />
-    <property name="LOG_FILE" value="dataprep-external-container" />
+    <property name="LOG_FILE" value="dataprep-external" />
     
     <appender name="console" class="ch.qos.logback.core.ConsoleAppender">
         <encoder>
