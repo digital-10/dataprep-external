@@ -323,7 +323,7 @@ public class DprepUtil {
 		for(int i = 0, iLen = preparationIds.size(); i < iLen; i++) {
 			copyTargetPreparationInfoVO = this.getPreparationBaseInfo(preparationIds.get(i), waitTime);
 			if(null != copyTargetPreparationInfoVO && StringUtils.isNotBlank(copyTargetPreparationInfoVO.getDatasetId())) {
-				MetadataVO preGeneratedMetadataVO = this.getMetadata(copyTargetPreparationInfoVO.getDatasetId(), waitTime); // 생성시 정보(기준)
+				MetadataVO preGeneratedMetadataVO = this.getMetadata(copyTargetPreparationInfoVO.getDatasetId(), waitTime); // 데이터셋 기준의 생성시 정보
 				
 				int columnsTypeincludeCnt = 0;
 				int columnsDomainsincludeCnt = 0; 

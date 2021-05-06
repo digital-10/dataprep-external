@@ -39,6 +39,7 @@ import com.google.gson.reflect.TypeToken;
 import kr.co.digitalship.dprep.custom.DprepHttpUtil;
 import kr.co.digitalship.dprep.custom.PcnApiUtil;
 import kr.co.digitalship.dprep.custom.PropertiesUtil;
+import kr.co.digitalship.dprep.custom.Singleton;
 import kr.co.digitalship.dprep.custom.redis.SpringRedisTemplateUtil;
 import kr.co.digitalship.dprep.custom.schedule.job.Job1Read;
 import kr.co.digitalship.dprep.custom.schedule.util.BackgroundAnalysisCustom;
@@ -437,8 +438,8 @@ public class ListenerJob4 implements JobListener {
 	    			job1Read.setCronExp(job1cronExp_2); // wsId가 없으면 내일 돌 수 있게.
 	    		}
 */
-	    		QuartzConfigUtil.scheduleJob(context, job1Read, listenerJob1);
 				QuartzConfigUtil.deleteJob(context);
+	    		QuartzConfigUtil.scheduleJob(context, job1Read, listenerJob1);				
 				
 				jobStatusNode = new ArrayList<String>(Arrays.asList(new String[]{"NEW", "NEW", "NEW", "NEW"}));
 				for(int i = 0, len = nodeCount; i < len; i++) { 					
@@ -449,8 +450,8 @@ public class ListenerJob4 implements JobListener {
 			else {
 				deletePartsRelatedToSplitFiles();
 				
-				QuartzConfigUtil.scheduleJob(context, job1Read, listenerJob1);
 				QuartzConfigUtil.deleteJob(context);
+				QuartzConfigUtil.scheduleJob(context, job1Read, listenerJob1);
 				
 				LOGGER.info(String.format("QuartzJobListner - Job4 DONE(%d)", nodeNo));
 			}

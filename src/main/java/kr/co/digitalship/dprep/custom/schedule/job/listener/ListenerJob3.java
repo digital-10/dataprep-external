@@ -19,6 +19,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.stereotype.Component;
 
 import kr.co.digitalship.dprep.custom.PropertiesUtil;
+import kr.co.digitalship.dprep.custom.Singleton;
 import kr.co.digitalship.dprep.custom.redis.SpringRedisTemplateUtil;
 import kr.co.digitalship.dprep.custom.schedule.job.Job1Read;
 import kr.co.digitalship.dprep.custom.schedule.job.Job4ExportMulti;
@@ -125,8 +126,8 @@ public class ListenerJob3 implements JobListener {
 			jobStatusNode.set(jobStepIdx, "DONE");
 			springRedisTemplateUtil.valueSet("JOB_STATUS_NODE_" + nodeNo, jobStatusNode);
 			
-			QuartzConfigUtil.scheduleJob(context, job4ExportMulti, listenerJob4);
 			QuartzConfigUtil.deleteJob(context);
+			QuartzConfigUtil.scheduleJob(context, job4ExportMulti, listenerJob4);
 			
 			LOGGER.info(String.format("QuartzJobListner - Job3 DONE(%d)", nodeNo));
 		}
@@ -138,8 +139,8 @@ public class ListenerJob3 implements JobListener {
 					springRedisTemplateUtil.valueSet("JOB_STATUS_NODE_" + nodeNo, jobStatusNode);					
 					
 					// 
-					QuartzConfigUtil.scheduleJob(context, job1Read, listenerJob1);
 					QuartzConfigUtil.deleteJob(context);
+					QuartzConfigUtil.scheduleJob(context, job1Read, listenerJob1);
 					
 					LOGGER.info(String.format("QuartzJobListner - Job3 Do not proceed after(%d)", nodeNo));		
 					

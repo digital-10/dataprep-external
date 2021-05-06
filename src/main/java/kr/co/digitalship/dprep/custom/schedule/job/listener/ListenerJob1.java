@@ -22,6 +22,7 @@ import org.springframework.stereotype.Component;
 
 import kr.co.digitalship.dprep.custom.PcnApiUtil;
 import kr.co.digitalship.dprep.custom.PropertiesUtil;
+import kr.co.digitalship.dprep.custom.Singleton;
 import kr.co.digitalship.dprep.custom.redis.SpringRedisTemplateUtil;
 import kr.co.digitalship.dprep.custom.schedule.job.Job2Create;
 import kr.co.digitalship.dprep.custom.schedule.util.QuartzConfigUtil;
@@ -196,8 +197,8 @@ public class ListenerJob1 implements JobListener {
     			jobStatusNode.set(jobStepIdx, "DONE");
     			springRedisTemplateUtil.valueSet("JOB_STATUS_NODE_" + nodeNo, jobStatusNode);
     			
-    			QuartzConfigUtil.scheduleJob(context, job2Create, listenerJob2);
     			QuartzConfigUtil.deleteJob(context);
+    			QuartzConfigUtil.scheduleJob(context, job2Create, listenerJob2);    			
 
     			LOGGER.info(String.format("QuartzJobListner - Job1 DONE(%d)", nodeNo));
     		}

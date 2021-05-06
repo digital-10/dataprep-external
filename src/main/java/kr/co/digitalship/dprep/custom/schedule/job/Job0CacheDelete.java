@@ -35,7 +35,7 @@ public class Job0CacheDelete extends CustomQuartzJobBean {
 		
 		setJobName(this.getClass().getSimpleName());
 		setTriggerName(this.getClass().getSimpleName().replace("Job", "Trigger"));
-		setGroup("ProfilingBatch");
+		setGroup("ProfilingCacheDeleteBatch");
 		setCronExp(cronExp);
 		
 		// TODO :: 실행주기의 조정 필요함		
