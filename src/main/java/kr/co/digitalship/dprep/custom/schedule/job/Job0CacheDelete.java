@@ -48,8 +48,6 @@ public class Job0CacheDelete extends CustomQuartzJobBean {
 
 			setCronExp(cronExp);
 		}
-
-		setUseJobListener(false);
 	}
 
 	@Override

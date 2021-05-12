@@ -10,7 +10,6 @@ import org.quartz.DisallowConcurrentExecution;
 import org.quartz.JobExecutionContext;
 import org.quartz.JobExecutionException;
 import org.quartz.PersistJobDataAfterExecution;
-import org.quartz.SchedulerException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -99,17 +98,17 @@ public class Job0StatusMonitor extends CustomQuartzJobBean {
 	public void executeInternal(JobExecutionContext context) throws JobExecutionException {
 		LOGGER.debug(String.format(context.getJobDetail().getKey().getName() + " executeInternal Start (%d)", nodeNo));
 		
-		int reReadyChkCnt = 0;
-		// 모든 Job4가 종료이거나 END 상태를 포함하는 경우 초기 0번 노드의 1번 Job의 재시작을 위한...
+		int chkCnt = 0;
+		// 모든 Job이 종료이거나 더이상 진행할 수 없는 경우 초기 0번 노드의 1번 Job의 재시작을 위한...
 		for(int i = 0; i < nodeCount; i++) {
 			@SuppressWarnings("unchecked")
 			List<String> jobStatusNode  = (List<String>)springRedisTemplateUtil.valueGet("JOB_STATUS_NODE_" + nodeNo);
 			if(jobStatusNode.contains("END") || "DONE".equals(jobStatusNode.get(jobStatusNode.size() - 1))) {
-				reReadyChkCnt += 1;
+				chkCnt += 1;
 			}
 		}
 
-		if(reReadyChkCnt == nodeCount) {
+		if(chkCnt == nodeCount) {
 			DprepHttpUtil.counter = counter;
 			pcnApiUtil.getNextWsId(pcnApiUtil.getAuth());
 			
@@ -119,26 +118,36 @@ public class Job0StatusMonitor extends CustomQuartzJobBean {
 			QuartzConfigUtil.scheduleJob(context, job1Read, listenerJob1, listenerTrigger1);
 			
 			LOGGER.debug(String.format(context.getJobDetail().getKey().getName() + " executeInternal - Re-Ready-Schedule (%d)", nodeNo));
+			return;
 		}
 		
-		int realNode0 = -1;
-		// 0 번 노드의 결정 (경우에 따라 일부 노드는 작업이 END 로 종료될 수 있기 때문이며...Job3 이후 전체 한번 체크
+		// 0 번 노드의 결정 및 Job4의 실행		
+		chkCnt = 0;		
 		for(int i = 0; i < nodeCount; i++) {
 			@SuppressWarnings("unchecked")
 			List<String> jobStatusNode  = (List<String>)springRedisTemplateUtil.valueGet("JOB_STATUS_NODE_" + nodeNo);
-			if("DONE".equals(jobStatusNode.get(2))) {
-				realNode0 = i;
-				springRedisTemplateUtil.valueSet("NODE_0", i);
-				break;
+			if("NEW".equals(jobStatusNode.get(jobStatusNode.size() - 1))) {
+				if(jobStatusNode.contains("END") || "DONE".equals(jobStatusNode.get(2))) {
+					chkCnt += 1;
+				}				
 			}
 		}
 		
-		// 0 번 노드가 결정이 되면...Job4 를 실행 (Job4 가 없는 경우) 
-		if(-1 < realNode0) {
+		if(chkCnt == nodeCount) {
 			for(int i = 0; i < nodeCount; i++) {
 				@SuppressWarnings("unchecked")
 				List<String> jobStatusNode  = (List<String>)springRedisTemplateUtil.valueGet("JOB_STATUS_NODE_" + nodeNo);
-				if("DONE".equals(jobStatusNode.get(jobStatusNode.size() - 2)) && "NEW".equals(jobStatusNode.get(jobStatusNode.size() - 1))) {
+				if("DONE".equals(jobStatusNode.get(2))) {
+					springRedisTemplateUtil.valueSet("NODE_0", i);
+					break;
+				}
+			}
+			
+			// 0 번 노드가 결정이 되면...Job4 를 실행 (Job4 가 없는 경우) 
+			for(int i = 0; i < nodeCount; i++) {
+				@SuppressWarnings("unchecked")
+				List<String> jobStatusNode  = (List<String>)springRedisTemplateUtil.valueGet("JOB_STATUS_NODE_" + nodeNo);
+				if("DONE".equals(jobStatusNode.get(2)) && "NEW".equals(jobStatusNode.get(jobStatusNode.size() - 1))) {
 					LOGGER.debug(String.format(context.getJobDetail().getKey().getName() + " executeInternal - Job4-Ready (%d)", nodeNo));
 					
 					if(0 == i) {
@@ -148,7 +157,8 @@ public class Job0StatusMonitor extends CustomQuartzJobBean {
 	        			QuartzConfigUtil.addJobToNode(datasetHosts[i], "job4Export");
 					}					
 				}
-			}	
+			}
+			return;
 		}
 		
 		LOGGER.debug(String.format(context.getJobDetail().getKey().getName() + " executeInternal End (%d)", nodeNo));
