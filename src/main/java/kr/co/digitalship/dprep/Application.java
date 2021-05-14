@@ -18,7 +18,6 @@ import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Properties;
 import java.util.concurrent.TimeUnit;
 
 import org.slf4j.Logger;
@@ -44,6 +43,7 @@ import com.netflix.hystrix.Hystrix;
 
 import kr.co.digitalship.dprep.custom.DirectoryWatcher;
 import kr.co.digitalship.dprep.custom.PropertiesUtil;
+import kr.co.digitalship.dprep.custom.Singleton;
 
 @SpringBootApplication
 @Configuration("kr.co.digitalship.dprep.Application")
@@ -69,10 +69,12 @@ public class Application implements DisposableBean {
     //private static final Logger LOG = LoggerFactory.getLogger(Application.class);
 
     public static void main(String[] args) throws ClassNotFoundException {
-    	ApplicationContext applicationContext = SpringApplication.run(Application.class, args);
+    	@SuppressWarnings("unused")
+		ApplicationContext applicationContext = SpringApplication.run(Application.class, args);
     	
     	// DQ 에서 사전과 정규식을 변경할때 변경 반영하기 위해
-		Properties properties = new PropertiesUtil().getProperties();
+    	PropertiesUtil properties = Singleton.getInstance().getPropertiesUtil();
+    	
 		String dataqualityIndexesLocation = properties.getProperty("dataquality.indexes.file.location");
 		DirectoryWatcher[] directoryWatchers = new DirectoryWatcher[3];
 		Path[] paths = new Path[3];
