@@ -19,6 +19,7 @@
     <name>dataprep-external</name>
     <packaging>jar</packaging>
     <description>D.Prep</description>
+    <version>3.1.0-SNAPSHOT</version>
     
     <parent>
         <groupId>org.springframework.boot</groupId>
@@ -28,7 +29,7 @@
     </parent>
 
     <properties>
-        <dataprep.core.version>3.0.0-SNAPSHOT</dataprep.core.version>
+        <dataprep.core.version>3.1.0-SNAPSHOT</dataprep.core.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <slf4j.version>1.7.22</slf4j.version>
         <java.version>1.8</java.version>
@@ -304,6 +305,7 @@
                 <version>${dataprep.core.version}</version>
                 <classifier>lib</classifier>
             </dependency>
+<!--             
             <dependency>
                 <groupId>kr.co.digitalship.dataprep</groupId>
                 <artifactId>dataprep-api</artifactId>
@@ -311,6 +313,7 @@
                 <version>${dataprep.core.version}</version>
                 <scope>test</scope>
             </dependency>
+-->            
             <dependency>
                 <groupId>kr.co.digitalship.dataprep</groupId>
                 <artifactId>dataprep-async-api</artifactId>
@@ -331,6 +334,7 @@
                 <artifactId>dataprep-backend-common</artifactId>
                 <version>${dataprep.core.version}</version>
             </dependency>
+<!--             
             <dependency>
                 <groupId>kr.co.digitalship.dataprep</groupId>
                 <artifactId>dataprep-backend-common</artifactId>
@@ -338,11 +342,13 @@
                 <type>test-jar</type>
                 <scope>test</scope>
             </dependency>
+-->            
             <dependency>
                 <groupId>kr.co.digitalship.dataprep</groupId>
                 <artifactId>dataprep-backend-service</artifactId>
                 <version>${dataprep.core.version}</version>
             </dependency>
+<!--             
             <dependency>
                 <groupId>kr.co.digitalship.dataprep</groupId>
                 <artifactId>dataprep-backend-service</artifactId>
@@ -350,12 +356,14 @@
                 <version>${dataprep.core.version}</version>
                 <scope>test</scope>
             </dependency>
+-->            
             <dependency>
                 <groupId>kr.co.digitalship.dataprep</groupId>
                 <artifactId>dataprep-dataset</artifactId>
                 <version>${dataprep.core.version}</version>
                 <classifier>lib</classifier>
             </dependency>
+<!--            
             <dependency>
                 <groupId>kr.co.digitalship.dataprep</groupId>
                 <artifactId>dataprep-dataset</artifactId>
@@ -363,12 +371,14 @@
                 <version>${dataprep.core.version}</version>
                 <scope>test</scope>
             </dependency>
+-->            
             <dependency>
                 <groupId>kr.co.digitalship.dataprep</groupId>
                 <artifactId>dataprep-preparation</artifactId>
                 <version>${dataprep.core.version}</version>
                 <classifier>lib</classifier>
             </dependency>
+<!--            
             <dependency>
                 <groupId>kr.co.digitalship.dataprep</groupId>
                 <artifactId>dataprep-preparation</artifactId>
@@ -376,12 +386,14 @@
                 <version>${dataprep.core.version}</version>
                 <scope>test</scope>
             </dependency>
+-->            
             <dependency>
                 <groupId>kr.co.digitalship.dataprep</groupId>
                 <artifactId>dataprep-transformation</artifactId>
                 <version>${dataprep.core.version}</version>
                 <classifier>lib</classifier>
-            </dependency>            
+            </dependency>
+<!--            
             <dependency>
                 <groupId>kr.co.digitalship.dataprep</groupId>
                 <artifactId>dataprep-transformation</artifactId>
@@ -389,6 +401,7 @@
                 <version>${dataprep.core.version}</version>
                 <scope>test</scope>
             </dependency>
+-->            
             <dependency>
                 <groupId>org.springframework.cloud</groupId>
                 <artifactId>spring-cloud-starter-openfeign</artifactId>
@@ -1136,12 +1149,14 @@
             <artifactId>dataprep-api</artifactId>
             <classifier>lib</classifier>
         </dependency>
+<!--        
         <dependency>
             <groupId>kr.co.digitalship.dataprep</groupId>
             <artifactId>dataprep-api</artifactId>
             <type>test-jar</type>
             <scope>test</scope>
-        </dependency>        
+        </dependency>
+-->                
         <dependency>
             <groupId>kr.co.digitalship.dataprep</groupId>
             <artifactId>dataprep-async-api</artifactId>
@@ -1158,56 +1173,65 @@
             <groupId>kr.co.digitalship.dataprep</groupId>
             <artifactId>dataprep-backend-common</artifactId>
         </dependency>
+<!--        
         <dependency>
             <groupId>kr.co.digitalship.dataprep</groupId>
             <artifactId>dataprep-backend-common</artifactId>
             <type>test-jar</type>
             <scope>test</scope>
-        </dependency>        
+        </dependency>
+-->                
         <dependency>
             <groupId>kr.co.digitalship.dataprep</groupId>
             <artifactId>dataprep-backend-service</artifactId>
         </dependency>
+<!--        
         <dependency>
             <groupId>kr.co.digitalship.dataprep</groupId>
             <artifactId>dataprep-backend-service</artifactId>
             <type>test-jar</type>
             <scope>test</scope>
         </dependency>
+-->        
         <dependency>
             <groupId>kr.co.digitalship.dataprep</groupId>
             <artifactId>dataprep-dataset</artifactId>
             <classifier>lib</classifier>
         </dependency>
+<!--         
         <dependency>
             <groupId>kr.co.digitalship.dataprep</groupId>
             <artifactId>dataprep-dataset</artifactId>
             <type>test-jar</type>
             <scope>test</scope>
-        </dependency>         
+        </dependency>
+-->
         <dependency>
             <groupId>kr.co.digitalship.dataprep</groupId>
             <artifactId>dataprep-preparation</artifactId>
             <classifier>lib</classifier>
         </dependency>
+<!--        
         <dependency>
             <groupId>kr.co.digitalship.dataprep</groupId>
             <artifactId>dataprep-preparation</artifactId>
             <type>test-jar</type>
             <scope>test</scope>
-        </dependency>        
+        </dependency>
+-->
         <dependency>
             <groupId>kr.co.digitalship.dataprep</groupId>
             <artifactId>dataprep-transformation</artifactId>
             <classifier>lib</classifier>
         </dependency>
+<!--        
         <dependency>
             <groupId>kr.co.digitalship.dataprep</groupId>
             <artifactId>dataprep-transformation</artifactId>
             <type>test-jar</type>
             <scope>test</scope>
         </dependency>               
-        
+-->        
         <!-- Redis DEPENDENCIES -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -1405,11 +1429,14 @@
                         </goals>
                         <configuration>
                             <sources>
-                                <source>/Users/motive/git/Dprep/dataprep-backend-service/src/main/java</source>                               
+                            <!-- <source>/Users/motive/git/Dprep/dataprep-backend-common/src/main/java</source> -->
+                                <source>/Users/motive/git/Dprep/dataprep-backend-service/src/main/java</source>
+                            <!--
                                 <source>/Users/motive/git/Dprep/dataprep-api/src/main/java</source>
                                 <source>/Users/motive/git/Dprep/dataprep-dataset/src/main/java</source>
                                 <source>/Users/motive/git/Dprep/dataprep-preparation/src/main/java</source>
-                                <source>/Users/motive/git/Dprep/dataprep-transformation/src/main/java</source>                                                                
+                                <source>/Users/motive/git/Dprep/dataprep-transformation/src/main/java</source>
+                            -->
                             </sources>
                         </configuration>
                     </execution>
