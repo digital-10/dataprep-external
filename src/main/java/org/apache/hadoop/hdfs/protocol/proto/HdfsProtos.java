@@ -3,11 +3,12 @@
 
 package org.apache.hadoop.hdfs.protocol.proto;
 
-import java.util.Properties;
-
 import org.apache.commons.lang.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import kr.co.digitalship.dprep.custom.PropertiesUtil;
+import kr.co.digitalship.dprep.custom.Singleton;
 
 public final class HdfsProtos {
   private HdfsProtos() {}
@@ -18025,6 +18026,8 @@ public final class HdfsProtos {
       com.google.protobuf.GeneratedMessage
       implements LocatedBlockProtoOrBuilder {
     // Use LocatedBlockProto.newBuilder() to construct.
+	private static final Logger LOGGER = LoggerFactory.getLogger(LocatedBlockProto.class);	  
+	  
     private LocatedBlockProto(com.google.protobuf.GeneratedMessage.Builder<?> builder) {
       super(builder);
       this.unknownFields = builder.getUnknownFields();
@@ -18300,11 +18303,17 @@ public final class HdfsProtos {
      * </pre>
      */
     public java.util.List<org.apache.hadoop.hdfs.protocol.proto.HdfsProtos.DatanodeInfoProto> getLocsList() {
-    	Properties properties = new PropertiesUtil().getProperties();
+    	PropertiesUtil properties = Singleton.getInstance().getPropertiesUtil();
+    	
     	String hostName = properties.getProperty("hadoop.datanode.hostName");
     	String ipAddr = properties.getProperty("hadoop.datanode.ipAddr");
     	String xferPort = properties.getProperty("hadoop.datanode.xferPort");
 
+        for(int i = 0, len = locs_.size(); i < len; i++) {
+            HdfsProtos.DatanodeInfoProto loc = locs_.get(i);
+            LOGGER.debug("Hadoop Datanode Default Info HostName: %s, Ip: %s, Port: %d", loc.getId().getHostName(), loc.getId().getIpAddr(), loc.getId().getXferPort());
+        }
+    	
     	if(StringUtils.isNotBlank(hostName) && StringUtils.isNotBlank(ipAddr) && StringUtils.isNotBlank(xferPort)) {
             java.util.List<org.apache.hadoop.hdfs.protocol.proto.HdfsProtos.DatanodeInfoProto> locs = new java.util.ArrayList<>();
             
