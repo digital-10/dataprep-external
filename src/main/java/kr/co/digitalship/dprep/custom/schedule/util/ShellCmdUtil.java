@@ -3,7 +3,6 @@ package kr.co.digitalship.dprep.custom.schedule.util;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.Properties;
 import java.util.concurrent.Executors;
 
 import javax.annotation.PostConstruct;
@@ -16,6 +15,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import kr.co.digitalship.dprep.custom.PropertiesUtil;
+import kr.co.digitalship.dprep.custom.Singleton;
 
 @Component
 public class ShellCmdUtil {
@@ -61,12 +61,11 @@ public class ShellCmdUtil {
     
 	@PostConstruct
 	public void init() {
-		if(StringUtils.isBlank(this.runScriptPath) || StringUtils.isBlank(this.runScriptName)) {
-			Properties properties = new PropertiesUtil().getProperties();
-			
-			this.runScriptPath = properties.getProperty("pipeline.run.script.path");
-			this.runScriptName = properties.getProperty("pipeline.run.script.name");
-		}
+		PropertiesUtil properties = Singleton.getInstance().getPropertiesUtil();
+		
+		this.runScriptPath = properties.getProperty("pipeline.run.script.path");
+		this.runScriptName = properties.getProperty("pipeline.run.script.name");
+		this.runScriptWait = Boolean.parseBoolean(properties.getProperty("pipeline.run.script.wait"));
 	}
     
     public void execute(String wsId) throws IOException, InterruptedException {

@@ -2,11 +2,9 @@ package kr.co.digitalship.dprep.custom.redis;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Properties;
 
 import javax.annotation.PostConstruct;
 
-import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -14,6 +12,7 @@ import org.springframework.data.redis.core.ZSetOperations;
 import org.springframework.stereotype.Component;
 
 import kr.co.digitalship.dprep.custom.PropertiesUtil;
+import kr.co.digitalship.dprep.custom.Singleton;
 
 @Component
 public class SpringRedisTemplateUtil {
@@ -70,15 +69,13 @@ public class SpringRedisTemplateUtil {
 
     @PostConstruct
     public void init() {
-    	if(StringUtils.isEmpty(metadataFileLocation)) {
-    		Properties properties = new PropertiesUtil().getProperties();
-    		
-            enabled = Boolean.parseBoolean(properties.getProperty("spring.redis.enabled"));
-            //transfomationEnabled = Boolean.parseBoolean(properties.getProperty("spring.redis.transformation.enabled"));
-            localPath = properties.getProperty("content-service.store.local.path");
-            metadataFileLocation = properties.getProperty("dataset.metadata.store.file.location");
-            preparationFileLocation = properties.getProperty("preparation.store.file.location");    		
-    	}
+		PropertiesUtil properties = Singleton.getInstance().getPropertiesUtil();
+		
+        enabled = Boolean.parseBoolean(properties.getProperty("spring.redis.enabled"));
+        //transfomationEnabled = Boolean.parseBoolean(properties.getProperty("spring.redis.transformation.enabled"));
+        localPath = properties.getProperty("content-service.store.local.path");
+        metadataFileLocation = properties.getProperty("dataset.metadata.store.file.location");
+        preparationFileLocation = properties.getProperty("preparation.store.file.location");    		
     }
     
     @Autowired    

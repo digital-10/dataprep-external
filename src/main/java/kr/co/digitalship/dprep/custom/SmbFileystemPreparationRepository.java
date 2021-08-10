@@ -19,7 +19,6 @@ import java.io.OutputStream;
 import java.net.MalformedURLException;
 import java.util.Arrays;
 import java.util.Objects;
-import java.util.Properties;
 import java.util.stream.Stream;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
@@ -88,15 +87,13 @@ public class SmbFileystemPreparationRepository extends ObjectPreparationReposito
      */
     @PostConstruct
     private void init() {
-        if(StringUtils.isBlank(preparationsLocation)) {
-        	Properties properties = new PropertiesUtil().getProperties();
-        	
-        	preparationsLocation = properties.getProperty("preparation.store.file.location");
-        	smbHost = properties.getProperty("smb.host");
-        	smbUser = properties.getProperty("smb.user");
-        	smbPassword = properties.getProperty("smb.password");
-        	smbSharedDir = properties.getProperty("smb.sharedDir");
-        }    	
+    	PropertiesUtil properties = Singleton.getInstance().getPropertiesUtil();
+    	
+    	preparationsLocation = properties.getProperty("preparation.store.file.location");
+    	smbHost = properties.getProperty("smb.host");
+    	smbUser = properties.getProperty("smb.user");
+    	smbPassword = properties.getProperty("smb.password");
+    	smbSharedDir = properties.getProperty("smb.sharedDir");
     	
         try {
 			getRootFolder().mkdirs();

@@ -4,11 +4,10 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
-import java.math.BigDecimal;
+//import java.math.BigDecimal;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Properties;
 
 import javax.annotation.PostConstruct;
 
@@ -22,16 +21,17 @@ import org.apache.hadoop.fs.FileUtil;
 import org.apache.hadoop.fs.LocatedFileStatus;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.RemoteIterator;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+//import org.slf4j.Logger;
+//import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import kr.co.digitalship.dprep.custom.PropertiesUtil;
+import kr.co.digitalship.dprep.custom.Singleton;
 
 @Component
 public class HadoopUtil {
-	private static final Logger LOGGER = LoggerFactory.getLogger(HadoopUtil.class);
+	//private static final Logger LOGGER = LoggerFactory.getLogger(HadoopUtil.class);
 	
 	@Value("${hadoop.fs.defaultFS:}")
     private String defaultFS;
@@ -52,16 +52,17 @@ public class HadoopUtil {
 		return this.conf;
 	}
 	
+	public HadoopUtil() {
+		init();
+	}
+	
 	@PostConstruct
 	public HadoopUtil init() {
-		// 그럴리 없겠지만 값이 주입되지 않았다면...
-		if(0 == nodeCount) {
-			Properties properties = new PropertiesUtil().getProperties();
-			
-			defaultFS = properties.getProperty("hadoop.fs.defaultFS");
-			user = properties.getProperty("hadoop.user");
-			nodeCount = Integer.parseInt(properties.getProperty("dataprep.node.count"));
-		}
+		PropertiesUtil properties = Singleton.getInstance().getPropertiesUtil();
+		
+		defaultFS = properties.getProperty("hadoop.fs.defaultFS");
+		user = properties.getProperty("hadoop.user");
+		nodeCount = Integer.parseInt(properties.getProperty("dataprep.node.count"));
 		
 		if(null == conf) {
 			configuration();			
@@ -96,55 +97,6 @@ public class HadoopUtil {
 		}
 		return fs;
 	}		
-	
-	public List<List<String>> getFileList(FileSystem fs, String basePath, List<String> prevFileLists) {
-		List<List<String>> fileLists = new ArrayList<>();
-		
-		Path readPath = new Path(basePath);
-		
-		try {
-			// TODO :: 디렉토리가 나눠져 있는 경우 어떻게 해야할까? 원본 파일의 삭제는 불가하다...(기처리건과 중복문제, 처리 목록을 하나의 파일에 계속 쓸 수 는 없다...)
-			RemoteIterator<LocatedFileStatus> remoteIterators = fs.listFiles(readPath, true); // 하부 디렉토리의 파일을 전부 읽어야 할 경우에...true
-			List<String> remoteListsStr = new ArrayList<>();			
-			while(remoteIterators.hasNext()) {
-				LocatedFileStatus locatedFileStatus = remoteIterators.next();
-				if(locatedFileStatus.isFile()) {
-					String filePath = Path.getPathWithoutSchemeAndAuthority(locatedFileStatus.getPath()).toString();
-					// 기처리 목록에 포함되지 않으면 처리대상으로 추가
-					if(null == prevFileLists || !prevFileLists.contains(filePath)) {
-						remoteListsStr.add(filePath);
-					}					
-				}
-			}
-			
-			if(0 < remoteListsStr.size()) {
-				BigDecimal totRow = new BigDecimal(remoteListsStr.size());
-				BigDecimal eachCnt = totRow.divide(new BigDecimal(nodeCount), 0,  BigDecimal.ROUND_UP);
-
-				for(int i = 0; i < nodeCount; i++) {
-					int fromIndex = i * eachCnt.intValue();
-					int toIndex = (i + 1) * eachCnt.intValue();
-
-					if(totRow.intValue() <= fromIndex) {
-						break;
-					}
-					else if(totRow.intValue() < toIndex) {
-						toIndex = totRow.intValue();
-					}
-					
-					fileLists.add(new ArrayList<String>(remoteListsStr.subList(fromIndex, toIndex)));
-				}				
-			}
-			return fileLists; 
-		} 
-		catch (FileNotFoundException e) {
-			LOGGER.info("HadoopUtil.getFileList - No files to be processed");
-		} 
-		catch (IOException e) {
-			e.printStackTrace();
-		}
-		return null;
-	}
 	
 	public List<String> getFileList(FileSystem fs, String basePath) {
 		List<String> fileLists = new ArrayList<>();
