@@ -7,8 +7,9 @@ var repoObj = {};
     
     $(document).ready(function() {
         divolteLoadStatus();
-        fnObserveDom();        
-    }); 
+        fnObserveDom();
+        $(window).on("resize", fnLookNFeel);
+    });
 })(jQuery);
 
 // Hashmap
@@ -93,6 +94,7 @@ async function fnObserveDom() {
     let observeTarget = null;
     if(jQuery("playground")[0]) {
         let exportButtonEl = jQuery("#export-button");
+        
         while(!exportButtonEl[0]) {
             await sleep(250);
             exportButtonEl = jQuery("#export-button");
@@ -130,14 +132,26 @@ async function fnObserveDom() {
             // observeTarget 의 변경
             if(jQuery("playground")[0]) {
                 let exportButtonEl = jQuery("#export-button");
-                while(!exportButtonEl[0]) {
+                
+                // 상세화면을 들어갈때 캐쉬를 재생성해야 하는 경우 다시 메인 화면으로 빠지면서 해당 엘리먼트가 사라지기 때문에 다시 체크
+                while(jQuery("playground")[0] && !exportButtonEl[0]) {
                     await sleep(250);
                     exportButtonEl = jQuery("#export-button");
                 }
-
-                observeTarget = jQuery("ul.playground-sub-header-right.nav.navbar-nav");
-                if(0 < jQuery("recipe").find("ul:eq(0)").children().length) {
-                    observeTarget = jQuery("recipe").find("ul:eq(0)");
+                
+                // 상세화면을 들어갈때 캐쉬를 재생성해야 하는 경우 다시 메인 화면으로 빠지면서 해당 엘리먼트가 사라지기 때문에 다시 체크
+                if(jQuery("playground")[0]) {
+                    observeTarget = jQuery("ul.playground-sub-header-right.nav.navbar-nav");
+                    if(0 < jQuery("recipe").find("ul:eq(0)").children().length) {
+                        observeTarget = jQuery("recipe").find("ul:eq(0)");
+                    }
+                }
+                else {
+                    observeTarget = jQuery("pure-side-panel>ul.nav");
+                    while(!observeTarget[0]) {
+                        await sleep(250);
+                        observeTarget = jQuery("pure-side-panel>ul.nav");
+                    }            
                 }
             }
             else {
@@ -151,15 +165,44 @@ async function fnObserveDom() {
 
             observer = new MutationObserver(callback);
             observer.observe(observeTarget[0], config);
+            
+            if("pure-side-panel>ul.nav" == observeTarget.selector) {
+                let contentListEl = jQuery("div.cell>div");
+
+                while(!contentListEl[0]) {
+                    await sleep(250);
+                    contentListEl = jQuery("div.cell>div");
+                }        
+                
+                contentListEl.each(function(idx, obj) {
+                     observer.observe(obj, config);
+                })
+                
+                observer.observe(jQuery("div.loading")[0], config);
+            }            
         }
     };
 
     // 선택한 노드의 변화 감지를 시작합니다.
     let observer = new MutationObserver(callback);
     observer.observe(observeTarget[0], config);
-}
+    
+    if("pure-side-panel>ul.nav" == observeTarget.selector) {
+        let contentListEl = jQuery("div.cell>div");
 
-function fnObserveTarget(observeTarget) {
+        while(!contentListEl[0]) {
+            await sleep(250);
+            contentListEl = jQuery("div.cell>div");
+        }
+        
+        contentListEl.each(function(idx, obj) {
+             observer.observe(obj, config);
+        });
+        
+        observer.observe(jQuery("div.loading")[0], config);
+    }
+}
+async function fnObserveTarget(observeTarget) {
     if("pure-side-panel>ul.nav" == observeTarget.selector) {
         // 메인
         const url = "http://localhost:9172/Metadata/regexes";
@@ -191,12 +234,12 @@ function fnObserveTarget(observeTarget) {
                     jQuery("body").append("<div id=\"recommend_dialog\"><p>This is the default dialog which is useful for displaying information. The dialog window can be moved, resized and closed with the &apos;x&apos; icon.</p><p>This is the default dialog which is useful for displaying information. The dialog window can be moved, resized and closed with the &apos;x&apos; icon.</p><p>This is the default dialog which is useful for displaying information. The dialog window can be moved, resized and closed with the &apos;x&apos; icon.</p></div>");
                     recommendDialogEl = jQuery("#recommend_dialog");                    
                 }                
-                
+/*                
                 let subHeaderRightEl = jQuery("ul.playground-sub-header-right.nav.navbar-nav");
                 if(!subHeaderRightEl.find("#btn_recommend_dialog")[0]) {
                     subHeaderRightEl.find("#export-data").before("<li><button id=\"btn_recommend_dialog\" class=\"btn btn-success\" onclick=\"javascript:dialogToggle('" + recommendDialogEl.attr("id") + "');\">추천</button></li>");
                 }
-
+*/
                 if(typeof recommendDialogEl.dialog("instance") == "undefined") {
                     recommendDialogEl.dialog({
                         autoOpen: false, // 초기화시 자동으로 열리지 않음, oepn() 메서드 호출로 열림
@@ -248,6 +291,119 @@ function fnObserveTarget(observeTarget) {
             }
         }
     }
+    
+    // PCN & 세종대 Look & Feel 통합
+    fnLookNFeel();
+}
+
+// PCN & 세종대 Look & Feel 통합
+async function fnLookNFeel() {
+    // 배경색 변경
+    jQuery("body").css("background-color", "#F8F8FB");
+    
+    //  헤더 & 풋터 삽입
+    if(!jQuery("div#integrated_header")[0] && !jQuery("div#integrated_footer")[0]) {
+        // 기본 적으로 Dom 변경에 따른 영향을 받지 않기 위해 body 밖에 둠.
+        let integrated_header_tag = "<div id=\"integrated_header\" style=\"position: fixed; top: 0; min-width: 70px; width: 100%; line-height: 70px; background-color: #2a3042; font-size: 17px; color: white;\">"
+                                  + "<span style=\"margin-left: 30px;\">D.Prep</span>"
+                                  + "</div>"; 
+        let integrated_footer_tag = "<div id=\"integrated_footer\" style=\"z-index: 1000; position: fixed; bottom: 0; min-height: 60px; width: 100%; line-height: 60px; background-color: #f2f2f5; font-size: 0.875rem; color: #74788d;\">"
+                                  + "<span style=\"margin-left: 30px;\">2021Ⓒ "
+                                  + "<img src=\"styles/images/pcn logo.png\" alt=\"pcn logo\" style=\"height: 12px;\">&nbsp;&nbsp;"
+                                  + "<img src=\"styles/images/sejong univ logo.png\" alt=\"sejong univ logo\" style=\"height: 12px;\">&nbsp;&nbsp;"
+                                  + "<img src=\"styles/images/digitalship logo.png\" alt=\"digitalship logo\" style=\"height: 12px;\">"
+                                  + "</span>"
+                                  + "<span style=\"float: right; margin-right: 30px;\">증강분석 빅데이터 프로파일링 공유 시스템</span>"
+                                  + "</div>"
+                        
+        jQuery("body").after(integrated_header_tag)
+                      .after(integrated_footer_tag);
+    }
+    
+    let documentH = jQuery(window).height();
+    // 레이아웃 크기 & 위치 조정
+    // 메인
+    if(jQuery("pure-side-panel>ul.nav")[0]) {
+        // 로고 제거
+        jQuery("div.logo").hide();        
+                
+        let sidebarH = documentH - 140; // (헤더 + 여백) + (풋터 + 여백)
+        
+        // 좌측 사이드바 위치 및 크기 지정
+        jQuery("div.sidebar").css({"top": "75px", "height": sidebarH + "px"});
+        
+        // 중앙 리스트 크기 조정
+        while(!jQuery("div.card-content.table-responsive")[0]) {
+            await sleep(100);
+        }
+        
+        let sidebarBottom = jQuery("div.sidebar")[0].getBoundingClientRect().bottom; // 사이드바 bottom        
+        let cardContentTop = jQuery("div.card-content.table-responsive")[0].getBoundingClientRect().top // 본문 리스트 top
+        let cardContentTableH = jQuery("div.card-content.table-responsive>table").outerHeight(); // div 안쪽 테이블의 실제 크기
+        if(sidebarBottom - cardContentTop < cardContentTableH) {
+            jQuery("div.card-content.table-responsive").outerHeight(sidebarBottom - cardContentTop).css("overflow-y", "auto");
+        }
+        else {
+            jQuery("div.card-content.table-responsive").css("overflow-y", "hidden");
+        }
+        
+        // 우측 네비 위치 조정 
+        while(!jQuery("div.navbar.navbar-default")) {
+            await sleep(100);
+        }
+        
+        // 데이터준비
+        if(2 == jQuery("div.navbar-left>button").length) {
+            jQuery("div.navbar.navbar-default").css({"top": "25px", "margin-left": "15px"});
+            
+            jQuery("div.card thead th").eq(1).hide().end().eq(2).width("90px").end().eq(3).width("90px").end().eq(5).width("30px");
+            jQuery("div.card tbody td").filter(function(idx) { return idx % 6 == 1; }).hide();
+            
+            // 위와 같이 컬럼 정보를 변경할 것이기 때문에...동일 구문이나 따로 사용
+            let cell = jQuery("div.card-content.table-responsive>table>tbody>tr:eq(0)>td:eq(0) div.cell");
+            let cellW = cell.outerWidth();
+            let iconW = cell.find("i").outerWidth(); 
+
+            jQuery("div.card-content.table-responsive>table>tbody>tr>td").filter(function(idx) { return idx % 6 == 0; }).find("div.cell button").outerWidth(cellW - iconW - 30);
+        }
+        // 데이터셋
+        else {
+            jQuery("div.navbar.navbar-default").css({"top": "", "margin-left": ""});
+            
+            let cell = jQuery("div.card-content.table-responsive>table>tbody>tr:eq(0)>td:eq(0) div.cell");
+            let cellW = cell.outerWidth();            
+            let iconW = cell.find("svg").outerWidth();
+            
+            jQuery("div.card-content.table-responsive>table>tbody>tr>td").filter(function(idx) { return idx % 4 == 0; }).find("div.cell button").outerWidth(cellW - iconW - 30);
+        }    
+    }
+    // 상세
+    else if(jQuery("recipe ul:eq(0)")[0] || jQuery("ul.playground-sub-header-right.nav.navbar-nav")[0]) {
+        jQuery("playground-header").css({"position": "relative", "top": "70px"}); // 상단 헤더
+        let playgroundHeaderBottom = jQuery("playground-header")[0].getBoundingClientRect().bottom;
+        
+        jQuery("div.recipe.ng-pristine.ng-untouched.ng-valid.ng-not-empty").css({"position": "relative", "top": "70px"}); // 좌측 레시피
+        jQuery("div.playground-center").css({"position": "relative", "top": "70px"}); // 중앙 컨텐츠
+        jQuery("talend-slidable:last>div.content").css({"position": "relative", "top": "70px"}); // 우측 레시피 추가 기능
+        
+        let helpRecipeH = documentH - playgroundHeaderBottom - 60; 
+        let datagridH = documentH - jQuery("div.slick-pane.slick-pane-header.slick-pane-left")[0].getBoundingClientRect().bottom - 60;
+        
+        jQuery("#help-recipe>div.recipe.ng-pristine.ng-untouched.ng-valid.ng-not-empty").height(helpRecipeH);
+        
+        // 데이터셋트 결합(우측 상단 겹친 동그라미 클릭)
+        jQuery("talend-slidable.lookup-slide.slidable.slide-bottom").height("320px").css({"position": "absolute", "bottom": "130px"});            
+        
+        while(datagridH != jQuery("div.slick-pane.slick-pane-top.slick-pane-left").height()) {
+            await sleep(100);
+            
+            jQuery("div.slick-pane.slick-pane-top.slick-pane-left").height(datagridH);
+            jQuery("div.slick-viewport.slick-viewport-top.slick-viewport-left").height(datagridH);
+            jQuery("div.slick-pane.slick-pane-top.slick-pane-right").height(datagridH);
+            jQuery("div.slick-viewport.slick-viewport-top.slick-viewport-right").height(datagridH);
+            jQuery("talend-slidable:last>div.content").height(helpRecipeH);            
+        }        
+    }    
 }
 
 // divolte 스크립트 로드에 따른 UI 이벤트 전송 및 메뉴 데이터 셋팅.
@@ -255,6 +411,31 @@ async function fnExecForDivolte() {
     jQuery("body").on("click dblclick", function(e) {
         eventHandler(e);
     });
+/*
+    // mouseup, mousedown, mousemove, touchcancel, touchend, touchmove 6개의 이벤트가 드래그에 관여하는걸로 추측 (vender-...js)
+    // 항목 클릭시 touchcancel, touchend, touchmove 3개 이벤트가 동적으로 추가 (vender-...js)
+    // drag, drop 관련 이벤트를 추가해봤으나...이동이 시작되면 이벤트가...제거됨
+    // 일차적인 판단은 추가가 힘들어 보임
+    jQuery("sc-accordion").eq(0).find(">ul>li").on({
+
+    });
+*/
+/* // 참고...이벤트 end -> 이벤트
+   // 이것도 참고 https://m.blog.naver.com/PostView.naver?isHttpsRedirect=true&blogId=platinasnow&logNo=221200971767 
+    var function1 = function() {
+        var deferred = $.Deferred();
+        //Do your thing. When finished, call deferred.resolve()
+        return deferred;
+    }
+    
+    var function2 = function() {
+       //Function 2 code
+    }
+    
+    $('#select1').on('change', function() {
+        function1().then(function2);
+    });
+*/
 
     // 컬럼별 메타 데이터 저장을 위해 (메타 정보가 이미 스크립트 오브젝트에 들어 있을것이라 판단은 되나 해당 오브젝트를 모르기 때문에)
     var s_ajaxListener = new Object();
@@ -334,7 +515,7 @@ async function fnExecForDivolte() {
 
             // 헤더
             if (headerObj[0] && !headerObj.hasClass("frozen")) {
-                divolteEventType = "header_click";
+                divolteEventType = "@header_click";
 
                 row_id = "0";
                 column_no = jQuery("div.ui-state-default.slick-header-column").index(headerObj);
@@ -344,7 +525,7 @@ async function fnExecForDivolte() {
             }
             // 셀
             else if (cellObj.hasClass("slick-cell") && !cellObj.hasClass("frozen")) {
-                divolteEventType = "cell_click";
+                divolteEventType = "@cell_click";
 
                 row_id = jQuery("div.ui-widget-content.slick-row.active:visible").find(".index-cell").text();
                 column_no = cellObj[0].className.match(/l\d{1}/g)[0].replace("l", "");
@@ -352,11 +533,11 @@ async function fnExecForDivolte() {
                 column_id = column.attr("id").replace(/^\w+\d(?=\d{4})/g, "");
                 column_title = jQuery.trim(column.find(".grid-header-title").text());
                 column_type = column.find(".grid-header-type").text();
-                cell_value_1 = targetObj.text();            
+                cell_value_1 = targetObj.text();
             }
             // 우측 상단 레시피 메뉴
             else if(targetObj.closest("sc-accordion-item")[0]) {
-                divolteEventType = "right_top_recipe_add";
+                divolteEventType = "@right_top_recipe_add";
 
                 var header = jQuery.trim(jQuery("actions-suggestions").find(".tabs-header.active").text());
                 var row_id = jQuery("div.ui-widget-content.slick-row.active:visible").find(".index-cell").text();
@@ -375,16 +556,24 @@ async function fnExecForDivolte() {
             if("" != jQuery.trim(row_id)) {
                 column_type = column_type.toLowerCase();
 
+                while(!repoObj[column_id]) {
+                    await sleep(100);
+                }
+                
+                column_domain = repoObj[column_id].domain;
+                column_type = repoObj[column_id].type;                   
+/*
                 if(repoObj[column_id]) {
                     column_domain = repoObj[column_id].domain;
                     column_type = repoObj[column_id].type;
                 }
-                else if (!("any" == column_type || "string" == column_type || "boolean" == column_type || "date" == column_type || "utc_datetime" == column_type || "numeric" == column_type || "double" == column_type || "double" == column_type || "float" == column_type)) {
+                
+                else if (!("any" == column_type || "string" == column_type || "boolean" == column_type || "date" == column_type || "utc_datetime" == column_type || "numeric" == column_type || "double" == column_type || "float" == column_type)) {
                     column_domain = _.clone(column_type);
                     column_type = "";
                 }
-
-                console.log("preparation_name : " + preparation_name +  " / row_id : " + row_id + " / column_no : " + column_no + " / cell_value_1 : " + cell_value_1 + " / column_id : " + column_id + " / column_title : " + column_title + " / column_type : " + column_type + " / column_domain : " + column_domain + " / menu_name : " + menu_name);
+*/
+                //console.log("preparation_name : " + preparation_name +  " / row_id : " + row_id + " / column_no : " + column_no + " / cell_value_1 : " + cell_value_1 + " / column_id : " + column_id + " / column_title : " + column_title + " / column_type : " + column_type + " / column_domain : " + column_domain + " / menu_name : " + menu_name);
 
                 divolte.signal(divolteEventType, {
                     "preparation_name": preparation_name,
@@ -413,9 +602,9 @@ async function fnExecForDivolte() {
             var step_label = step_description.find(".step-label").text();
             var step_id = targetObj.prev("a").attr("id").replace("step-remove-", "");
 
-            console.log("preparation_name : " + preparation_name +  " / step_no : " + step_no + " / step_scope : " + step_scope + " / step_label : " + step_label + " / step_id : " + step_id);
+            //console.log("preparation_name : " + preparation_name +  " / step_no : " + step_no + " / step_scope : " + step_scope + " / step_label : " + step_label + " / step_id : " + step_id);
 
-            divolte.signal("left_recipe_delete", {
+            divolte.signal("@left_recipe_delete", {
                 "preparation_name": preparation_name,
                 "step_description": step_description,
                 "step_no": step_no,
@@ -433,12 +622,12 @@ async function fnExecForDivolte() {
             else if(!targetObj.closest("actions-suggestions")[0]) {
                 var menu_name = jQuery.trim(targetObj.text());
 
-                divolte.signal("right_bottom_grape", {
+                divolte.signal("@right_bottom_grape", {
                     "menu_name": menu_name
                 });                
             }
 
-            console.log("preparation_name : " + preparation_name +  " / menu_name : " + menu_name);
+            //console.log("preparation_name : " + preparation_name +  " / menu_name : " + menu_name);
         }
         else if (e.target.nodeName == "BUTTON" && targetObj.closest(".step-parameters-list")[0]) {
             var step_description = targetObj.closest("li.as-sortable-item").find("step-description");
@@ -448,9 +637,9 @@ async function fnExecForDivolte() {
             var step_label = step_description.find(".step-label").text();
             var step_id = targetObj.closest(".as-sortable-item").find(".remove-icon").attr("id").replace("step-remove-", "");
 
-            console.log("preparation_name : " + preparation_name +  " / step_no : " + step_no + " / step_scope : " + step_scope + " / step_label : " + step_label + " / step_id : " + step_id);
+            //console.log("preparation_name : " + preparation_name +  " / step_no : " + step_no + " / step_scope : " + step_scope + " / step_label : " + step_label + " / step_id : " + step_id);
 
-            divolte.signal("left_recipe_change", {
+            divolte.signal("@left_recipe_change", {
                 "preparation_name": preparation_name,
                 "step_description": step_description,
                 "step_no": step_no,
@@ -649,7 +838,7 @@ function apiCallInfoSendToDivolte(method, url, params) {
             var step_label = _.clone(menu_name);
             var step_scope = parameters.scope || null;
             
-            console.log("preparation_name : " + preparation_name +  " / row_id : " + row_id + " / column_no : " + column_no + " / cell_value_1 : " + cell_value_1 + " / cell_value_2 : " + cell_value_2 + " / column_id : " + column_id + " / column_title : " + column_title + " / column_type : " + column_type + " / column_domain : " + column_domain + " / menu_name : " + menu_name + " / step_no : " + step_no + " / step_label : " + step_label + " / step_scope : " + step_scope);
+            //console.log("preparation_name : " + preparation_name +  " / row_id : " + row_id + " / column_no : " + column_no + " / cell_value_1 : " + cell_value_1 + " / cell_value_2 : " + cell_value_2 + " / column_id : " + column_id + " / column_title : " + column_title + " / column_type : " + column_type + " / column_domain : " + column_domain + " / menu_name : " + menu_name + " / step_no : " + step_no + " / step_label : " + step_label + " / step_scope : " + step_scope);
 
             divolte.signal(divolteEventType, {
                 "preparation_name": preparation_name,
@@ -671,7 +860,7 @@ function apiCallInfoSendToDivolte(method, url, params) {
         else if ("DELETE" == method) {
             var stepId = url.replace(/^http:\/\/\w+:*\d*\/api\/preparations\/[a-z0-9]{8}-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{12}\/actions\//g, "");
             
-            console.log(stepId);
+            //console.log(stepId);
         }
     }    
 }
