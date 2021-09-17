@@ -6,27 +6,34 @@ import java.io.InputStream;
 import java.math.BigDecimal;
 import java.net.MalformedURLException;
 import java.net.URISyntaxException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.Deque;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Properties;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.zip.GZIPInputStream;
 
 import javax.annotation.PostConstruct;
 
+import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.SerializationUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.http.client.utils.URIBuilder;
 import org.asynchttpclient.Response;
-import org.quartz.JobExecutionContext;
+//import org.quartz.JobExecutionContext;
+//import org.slf4j.Logger;
+//import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationContext;
@@ -36,9 +43,11 @@ import org.talend.dataprep.api.dataset.RowMetadata;
 import org.talend.dataprep.api.dataset.statistics.SemanticDomain;
 import org.talend.dataprep.command.preparation.GetStepRowMetadata;
 
+import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import com.google.gson.reflect.TypeToken;
 
 import jcifs.smb1.smb1.NtlmPasswordAuthentication;
 import jcifs.smb1.smb1.SmbException;
@@ -46,12 +55,16 @@ import jcifs.smb1.smb1.SmbFile;
 import kr.co.digitalship.dprep.custom.CommonUtil;
 import kr.co.digitalship.dprep.custom.DprepHttpUtil;
 import kr.co.digitalship.dprep.custom.PropertiesUtil;
+import kr.co.digitalship.dprep.custom.Singleton;
+import kr.co.digitalship.dprep.custom.redis.SpringRedisTemplateUtil;
 import kr.co.digitalship.dprep.custom.schedule.vo.MetadataVO;
 import kr.co.digitalship.dprep.custom.schedule.vo.CopyTargetPreparationInfoVO;
 import kr.co.digitalship.dprep.custom.schedule.vo.ProcessingInfomationVO;
 
 @Component
-public class DprepUtil {	
+public class DprepUtil {
+	//private static final Logger LOGGER = LoggerFactory.getLogger(DprepUtil.class);
+	
     @Value("${preparation.store:}")
     private String store;   
     
@@ -73,14 +86,14 @@ public class DprepUtil {
 	@Value("${dataprep.node.no:0}")
 	private int nodeNo;    
     
-    @Value("${dataprep.node.dataset.hosts:}")
-    private String[] datasetHosts;
+    @Value("${dataset.service.url:}")
+    private String[] datasetServiceUrl; 
     
-    @Value("${dataprep.node.preparation.hosts:}")
-    private String[] preparationHosts;        
+    @Value("${preparation.service.url:}")
+    private String[] preparationServiceUrl;       
     
-    @Value("${dataprep.node.export.hosts:}")
-    private String[] exportHosts;
+    @Value("${transformation.service.url:}")
+    private String[] transformationServiceUrl; 
     
 	@Value("${hadoop.read.base.path:}")
     private String hadoopReadBasePath;
@@ -91,11 +104,14 @@ public class DprepUtil {
 	@Value("${hadoop.copy.write.base.path:}")
     private String hadoopCopyWriteBasePath;	
 	
+	@Value("${schedule.job.dependence.wait:0}")
+	private int dependenceWait;	
+	
     @Autowired
     private ApplicationContext context;	
 
-	//@Autowired
-	//private SpringRedisTemplateUtil springRedisTemplateUtil;    
+	@Autowired
+	private SpringRedisTemplateUtil springRedisTemplateUtil;    
     
     private DprepHttpUtil dprepHttpUtil;
     
@@ -113,22 +129,23 @@ public class DprepUtil {
     
 	@PostConstruct
 	public DprepUtil init() {
-		// 그럴리 없겠지만 값이 주입되지 않았다면...
-		if(StringUtils.isBlank(store)) {
-			Properties properties = new PropertiesUtil().getProperties();
+		PropertiesUtil properties = Singleton.getInstance().getPropertiesUtil();
+		
+	    store = properties.getProperty("preparation.store");
+	    preparationsLocation = properties.getProperty("preparation.store.file.location");
+	    smbHost = properties.getProperty("smb.host");    
+	    smbSharedDir = properties.getProperty("smb.sharedDir");
+	    smbUser = properties.getProperty("smb.user");
+	    smbPassword = properties.getProperty("smb.password");
+		nodeNo = Integer.parseInt(properties.getProperty("dataprep.node.no"));
+		datasetServiceUrl = properties.getProperty("dataset.service.url").trim().split("\\s*,\\s*");
+		preparationServiceUrl = properties.getProperty("preparation.service.url").trim().split("\\s*,\\s*");
+		transformationServiceUrl = properties.getProperty("transformation.service.url").trim().split("\\s*,\\s*");
+		hadoopReadBasePath = properties.getProperty("hadoop.read.base.path");
+		hadoopWriteBasePath = properties.getProperty("hadoop.write.base.path");
+		hadoopCopyWriteBasePath = properties.getProperty("hadoop.copy.write.base.path");
+		dependenceWait = Integer.parseInt(properties.getProperty("schedule.job.dependence.wait"));
 			
-		    store = properties.getProperty("preparation.store");
-		    preparationsLocation = properties.getProperty("preparation.store.file.location");
-		    smbHost = properties.getProperty("smb.host");    
-		    smbSharedDir = properties.getProperty("smb.sharedDir");
-		    smbUser = properties.getProperty("smb.user");
-		    smbPassword = properties.getProperty("smb.password");
-			nodeNo = Integer.parseInt(properties.getProperty("dataprep.node.no"));
-			datasetHosts = properties.getProperty("dataprep.node.dataset.hosts").trim().split("\\s*,\\s*");
-			preparationHosts = properties.getProperty("dataprep.node.preparation.hosts").trim().split("\\s*,\\s*");
-			exportHosts = properties.getProperty("dataprep.node.export.hosts").trim().split("\\s*,\\s*");
-			hadoopWriteBasePath = properties.getProperty("hadoop.write.base.path");
-		}
 		return this;
 	}
 	
@@ -139,9 +156,9 @@ public class DprepUtil {
 	 * @param contents
 	 * @param context
 	 */
-	public void createDataset(Deque<URIBuilder> uriBuilders, String contentType, Deque<InputStream> contents, JobExecutionContext context) {
-		dprepHttpUtil.callAsyncPost(uriBuilders, contentType, contents, context);
-	}
+	public void createDataset(Deque<URIBuilder> uriBuilders, String contentType, Deque<InputStream> contents) {
+		dprepHttpUtil.callSyncPost(uriBuilders, contentType, contents);
+	}	
 	
 	/**
 	 * Get MetaData
@@ -157,11 +174,12 @@ public class DprepUtil {
     public MetadataVO getMetadata(String datasetId, int waitTime, boolean flag) {
 		Map<String, String> params = new HashMap<>();
 		params.put("path", dprepHttpUtil.getMetadataPath(datasetId));
-    	
-    	Response response = dprepHttpUtil.callSyncGet(datasetHosts[nodeNo], params, waitTime);
+		
+    	Response response = dprepHttpUtil.callSyncGet(datasetServiceUrl[nodeNo], params, waitTime);
 
     	MetadataVO metadataVO = new MetadataVO();
 		// 데이터셋 메타데이터를 가져올 수 없음.
+    	
     	if(200 != response.getStatusCode()) {
         	//if("TDP_API_UNABLE_TO_RETRIEVE_DATASET_METADATA".equals(jsonObject.getString("code"))) {
         	//	return null;
@@ -225,6 +243,7 @@ public class DprepUtil {
      */
     public List<String> getPersistentPreparationId() {
     	List<String> PersistentPreparationIds = new ArrayList<>();
+    	HashSet<String> hashSet = new HashSet<>();
     	
     	if("file".equals(store)) {
     		File directory = new File(preparationsLocation);
@@ -236,15 +255,26 @@ public class DprepUtil {
 					// TODO Auto-generated method stub
 					String s1 = String.valueOf(file1.lastModified());
 					String s2 = String.valueOf(flie2.lastModified());
-					return s2.compareTo(s1);
+					return s1.compareTo(s2);
 				}
     		});
     		
     		for(int i = files.length - 1; i >= 0; i--) {
-    			if(files[i].getName().startsWith("PersistentPreparation-")) {
-    				PersistentPreparationIds.add(files[i].getName().replace("PersistentPreparation-", ""));
+    			String fileName = files[i].getName();
+    			if(fileName.startsWith("PersistentPreparation-")) {
+    				if(fileName.contains("sJob") || fileName.contains("sjpr")) {
+        				String key = files[i].getName().substring(0, 40);
+        				if(!hashSet.contains(key)) {
+        					hashSet.add(key);
+        					PersistentPreparationIds.add(files[i].getName().replace("PersistentPreparation-", ""));
+        				}    					
+    				}
+    				else {
+    					PersistentPreparationIds.add(files[i].getName().replace("PersistentPreparation-", ""));
+    				}
     			}
     		}
+    		//files = null; // 빠른 반환을 위해 null 처리함
     	}
     	else {
     		String smbPreparationsLocation = "smb://" + smbHost + "/" + smbSharedDir + preparationsLocation + "/";
@@ -259,15 +289,26 @@ public class DprepUtil {
 						// TODO Auto-generated method stub
 						String s1 = String.valueOf(file1.getLastModified());
 						String s2 = String.valueOf(file2.getLastModified());
-						return s2.compareTo(s1);
+						return s1.compareTo(s2);
 					}
 	    		});				
-				
-				for(int i = files.length - 1; i >= 0; i--) {
-	    			if(files[i].getName().startsWith("PersistentPreparation-")) {
-	    				PersistentPreparationIds.add(files[i].getName().replace("PersistentPreparation-", ""));
+	    		
+	    		for(int i = files.length - 1; i >= 0; i--) {
+	    			String fileName = files[i].getName();
+	    			if(fileName.startsWith("PersistentPreparation-")) {
+	    				if(fileName.contains("sJob") || fileName.contains("sjpr")) {
+	        				String key = files[i].getName().substring(0, 40);
+	        				if(!hashSet.contains(key)) {
+	        					hashSet.add(key);
+	        					PersistentPreparationIds.add(files[i].getName().replace("PersistentPreparation-", ""));
+	        				}    					
+	    				}
+	    				else {
+	    					PersistentPreparationIds.add(files[i].getName().replace("PersistentPreparation-", ""));
+	    				}
 	    			}
 	    		}
+	    		//files = null; // 빠른 반환을 위해 null 처리함
 			} 
     		catch (MalformedURLException e) {
 				e.printStackTrace();
@@ -276,6 +317,8 @@ public class DprepUtil {
 				e.printStackTrace();
 			}
     	}
+    	//hashSet = null; // 빠른 반환을 위해 null 처리함
+    	
     	return PersistentPreparationIds;
     }
     
@@ -283,15 +326,15 @@ public class DprepUtil {
     	Map<String, String> params = new HashMap<>();
     	params.put("path", dprepHttpUtil.getPreparationPath(preparationId));
     	
-		Response response = dprepHttpUtil.callSyncGet(preparationHosts[nodeNo], params, waitTime);
-
-		CopyTargetPreparationInfoVO copyTargetPreparationInfoVO = new CopyTargetPreparationInfoVO();
+		Response response = dprepHttpUtil.callSyncGet(preparationServiceUrl[nodeNo], params, waitTime);
 		
 		if(200 != response.getStatusCode()) {
-			return copyTargetPreparationInfoVO;
+			return null;
 		}
 		
 		if(StringUtils.isNotBlank(response.getResponseBody())) {
+			CopyTargetPreparationInfoVO copyTargetPreparationInfoVO = new CopyTargetPreparationInfoVO();
+			
 			JsonObject gsonObject = new JsonParser().parse(response.getResponseBody()).getAsJsonObject();
 			JsonArray gsonArraySteps = gsonObject.get("steps").getAsJsonArray();
 			if(null != gsonArraySteps && 2 <= gsonArraySteps.size()) {
@@ -304,9 +347,10 @@ public class DprepUtil {
 					steps.add(gsonArraySteps.get(i).getAsString());
 				}
 				copyTargetPreparationInfoVO.setSteps(steps);
-			}			
+			}
+			return copyTargetPreparationInfoVO;
 		}
-		return copyTargetPreparationInfoVO;
+		return null;
     }    
     
     /**
@@ -322,13 +366,14 @@ public class DprepUtil {
 		
 		for(int i = 0, iLen = preparationIds.size(); i < iLen; i++) {
 			copyTargetPreparationInfoVO = this.getPreparationBaseInfo(preparationIds.get(i), waitTime);
+			
 			if(null != copyTargetPreparationInfoVO && StringUtils.isNotBlank(copyTargetPreparationInfoVO.getDatasetId())) {
 				MetadataVO preGeneratedMetadataVO = this.getMetadata(copyTargetPreparationInfoVO.getDatasetId(), waitTime); // 데이터셋 기준의 생성시 정보
 				
 				int columnsTypeincludeCnt = 0;
 				int columnsDomainsincludeCnt = 0; 
 				int totalCnt = 0;
-				
+			
 				if(null == preGeneratedMetadataVO || 0 == preGeneratedMetadataVO.getColumnsTypes().size()) {
 					continue;
 				}
@@ -338,7 +383,7 @@ public class DprepUtil {
 					
 					List<String> columnsType = preGeneratedMetadataVO.getColumnsTypes();
 					List<String> columnsDomain = preGeneratedMetadataVO.getColumnsDomains();					
-					
+				
 					totalCnt = toBeProcessedColumnsTypes.size();
 					if(toBeProcessedColumnsTypes.size() == columnsType.size()) {
 						for(int j = 0, jLen = toBeProcessedColumnsTypes.size(); j < jLen; j++) {
@@ -414,7 +459,7 @@ public class DprepUtil {
     	
     	Response response = null;
     	while(null == response || StringUtils.isBlank(response.getResponseBody())) {
-    		response = dprepHttpUtil.callSyncGet(preparationHosts[nodeNo], params, waitTime);
+    		response = dprepHttpUtil.callSyncGet(preparationServiceUrl[nodeNo], params, waitTime);
     		
     		if(0 < waitTime && (null == response || StringUtils.isBlank(response.getResponseBody()))) {
 	    		try {
@@ -462,61 +507,7 @@ public class DprepUtil {
      * @param encoding
      * @param waitTime
      */
-    public void exportSingle(ProcessingInfomationVO processingInfomationVO, MetadataVO metadataVO, int waitTime) {
-    	String datasetId = processingInfomationVO.getDatasetIds().get(0);
-		String preparationId = processingInfomationVO.getPreparationIds().get(0);
-		String fileName = processingInfomationVO.getFileNames().get(0);
-		String filePath = processingInfomationVO.getFilePath();
-		
-		String hadoopWritePath = hadoopWriteBasePath;
-
-		String fullPath = filePath.replace(hadoopReadBasePath, hadoopWritePath);
-		
-    	Map<String, String> params = new HashMap<>();
-    	params.put("path", dprepHttpUtil.getExportPath());    	
-		params.put("exportType", "CSV");
-    	params.put("exportParameters.csv_fields_delimiter", metadataVO.getDelimiter());    	
-		params.put("exportParameters.csv_enclosure_character", "");
-		params.put("exportParameters.csv_escape_character", "");
-		params.put("exportParameters.csv_enclosure_mode", "text_only");
-		params.put("exportParameters.csv_encoding", metadataVO.getEncoding());    	
-    	
-    	FileSystem fs = hadoopUtil.getFs();
-
-		reentrantLock = new ReentrantLock();
-    	boolean isPossibleLock = reentrantLock.isLocked(); // Lock을 걸 수 있는지 확인
-    	
-    	if(!isPossibleLock) {
-    		try {
-				reentrantLock.lock();
-				
-				params.put("datasetId", datasetId);
-				params.put("preparationId", preparationId);
-				params.put("exportParameters.fileName", fileName);
-				
-				Response response = dprepHttpUtil.callSyncGet(exportHosts[nodeNo], params, waitTime);
-				
-				hadoopUtil.write(fs, response.getResponseBody(), fullPath);
-				
-				String dstPath = fullPath.replace(hadoopWritePath, hadoopCopyWriteBasePath);
-				hadoopUtil.copy(fullPath, dstPath); // 복제				
-				
-				Thread.sleep(1000);
-			} 
-    		catch (InterruptedException e) {
-				e.printStackTrace();
-			}
-    		finally {
-    			reentrantLock.unlock();
-    			
-    			if(null != fs) {
-    				try { fs.close(); } catch (IOException e) {}
-    			}    			
-    		}
-    	}
-    }
-
-    public void exportMulti(ProcessingInfomationVO processingInfomationVO, MetadataVO metadataVO, int waitTime) {
+    public void export(ProcessingInfomationVO processingInfomationVO, MetadataVO metadataVO, int waitTime) {
     	List<String> datasetIds = processingInfomationVO.getDatasetIds();
 		List<String> preparationIds = processingInfomationVO.getPreparationIds();
 		String fileName = processingInfomationVO.getFileNames().get(0);
@@ -548,7 +539,7 @@ public class DprepUtil {
 					params.put("preparationId", preparationIds.get(i));
 					params.put("exportParameters.fileName", fileName);	    			
 	    			
-					Response response = dprepHttpUtil.callSyncGet(exportHosts[nodeNo], params, waitTime);
+					Response response = dprepHttpUtil.callSyncGet(transformationServiceUrl[nodeNo], params, waitTime);
 					// 원본에 없던 임의로 붙은 헤더인 경우 제거
 					if("0".equals(metadataVO.getHeaderNbLines())) {
 						stringBuffer = CommonUtil.readAndExcludeHeader(stringBuffer, response.getResponseBody());
@@ -587,7 +578,7 @@ public class DprepUtil {
     	    
     	for(int i = 0, len = ids.size(); i < len; i++) {
     		try {
-				URIBuilder uriBuilder = new URIBuilder(datasetHosts[nodeNo]);
+				URIBuilder uriBuilder = new URIBuilder(datasetServiceUrl[nodeNo]);
 				uriBuilder.setPath(dprepHttpUtil.getPreparationDeletePath(ids.get(i)));
 				
 				uriBuilders.add(uriBuilder);
@@ -607,7 +598,7 @@ public class DprepUtil {
 	    
     	for(int i = 0, len = stepIds.size(); i < len; i++) {
     		try {
-				URIBuilder uriBuilder = new URIBuilder(datasetHosts[nodeNo]);
+				URIBuilder uriBuilder = new URIBuilder(datasetServiceUrl[nodeNo]);
 				uriBuilder.setPath(dprepHttpUtil.getStepDeletePath(preparationId, stepIds.get(i)));
 				
 				uriBuilders.add(uriBuilder);
@@ -627,7 +618,7 @@ public class DprepUtil {
 	    
     	for(int i = 0, len = ids.size(); i < len; i++) {
     		try {
-				URIBuilder uriBuilder = new URIBuilder(datasetHosts[nodeNo]);
+				URIBuilder uriBuilder = new URIBuilder(datasetServiceUrl[nodeNo]);
 				uriBuilder.setPath(dprepHttpUtil.getDatasetDeletePath(ids.get(i)));
 				
 				uriBuilders.add(uriBuilder);
@@ -718,7 +709,7 @@ public class DprepUtil {
 					Map<String, String> params = new HashMap<>();
 					params.put("path", dprepHttpUtil.getPreparationActionPath(preparationIds.get(i)));    		
 					
-					dprepHttpUtil.callSyncPost(datasetHosts[nodeNo], params, gsonObject);
+					dprepHttpUtil.callSyncPost(datasetServiceUrl[nodeNo], params, gsonObject);
 					
 					Thread.sleep(1000);
 				} 
@@ -730,5 +721,139 @@ public class DprepUtil {
         		}
         	}
     	}    	
-    }	
+    }
+    
+    /**
+     * PersistentPreparation 를 제거한 후 개별 PersistentStep / StepRowMetadata 를 확인하여 제거
+     * Dataset / Metadata 제거
+     * @param excludeSplitIdx
+     */
+    public void deleteDprepData(int excludeSplitIdx) {
+    	Gson gson = new Gson();
+    	reentrantLock = new ReentrantLock();
+    	
+		// 레시피 파일 제거	
+		String jsonStr = (String)springRedisTemplateUtil.valueGet("LIST_OF_EXPORT_" + nodeNo);	
+		if(StringUtils.isNotBlank(jsonStr)) {
+			JsonArray gsonArrayExport = new JsonParser().parse(jsonStr).getAsJsonArray();
+			
+			List<ProcessingInfomationVO> export = gson.fromJson(gsonArrayExport, new TypeToken<List<ProcessingInfomationVO>>() {}.getType());
+			
+			if(0 < export.size()) {
+				List<String> deletePersistentStepTarget = new ArrayList<>();
+				
+				for(int i = 0, len = export.size(); i < len; i++) {
+			    	boolean isPossibleLock = reentrantLock.isLocked(); // Lock을 걸 수 있는지 확인
+			    	if(!isPossibleLock) {
+			    		try {			    		
+				    		reentrantLock.lock();
+				    		
+				    		ProcessingInfomationVO processingInfomationVO = export.get(i);
+				    		List<String> preparationIds = processingInfomationVO.getPreparationIds();
+				    		List<String> datasetIds = processingInfomationVO.getDatasetIds();
+				    		//List<String> fileNames = processingInfomationVO.getFileNames();
+
+							// 분할된 파일중 excludeSplitIdx 이외의 Preparation 제거
+				    		for(int j = preparationIds.size() - 1; j >= 0; j--) {
+				    			int splitIdx = Integer.parseInt(datasetIds.get(j).split("-")[4].substring(8));
+				    			if(excludeSplitIdx == splitIdx) {
+				    				preparationIds.remove(j);
+				    				datasetIds.remove(j);
+				    				
+				    				continue;
+				    			}
+				    			
+				    			CopyTargetPreparationInfoVO copyTargetPreparationInfoVO = this.getPreparationBaseInfo(preparationIds.get(j), dependenceWait);
+				    			if(null != copyTargetPreparationInfoVO && null != copyTargetPreparationInfoVO.getSteps()) {
+				    				List<String> steps = copyTargetPreparationInfoVO.getSteps();
+				    				steps.remove(0); // PersistentPreparation 에 기본 추가되어 있는 디폴트 정보 ( f6e172c33bdacbc69bca9d32b2bd78174712a171 ) 로 실제 파일은 존재하지 않음.
+				    				
+				    				if(0 < steps.size()) {
+				    					deletePersistentStepTarget.addAll(steps);
+				    				}
+				    			}
+				    		}
+				    		
+				    		this.deletePreparationById(preparationIds, dependenceWait); // PersistentPreparation 삭제
+				    		
+							Thread.sleep(1000);
+						} 
+			    		catch (InterruptedException e) {
+							e.printStackTrace();
+						}
+			    		finally {
+			    			reentrantLock.unlock();
+			    		}
+			    	}
+				}
+				
+				// 잔여 물리 파일 제거 (StepRowMetadata, PersistentStep 삭제, PreparationActions은 일부 공유되고 있으며 확인이 쉽지 않은 관계로 삭제하지 않음.)
+				for(int i = 0, len = deletePersistentStepTarget.size(); i < len; i++) {
+		    		File persistentStepFile = new File(preparationsLocation + "/PersistentStep-" + deletePersistentStepTarget.get(i));
+		    		
+		    		if(persistentStepFile.isFile()) {
+		        		try (InputStream in = Files.newInputStream(Paths.get(persistentStepFile.getPath()), StandardOpenOption.READ); GZIPInputStream gZIPInputStream = new GZIPInputStream(in)) {
+		        			String persistentStep = IOUtils.toString(gZIPInputStream, "UTF-8");
+		        			
+		        			if(StringUtils.isNotBlank(persistentStep)) {
+			        			JsonObject gsonObjectPersistentStep = new JsonParser().parse(persistentStep).getAsJsonObject();
+			        			String stepRowMetadataId = gsonObjectPersistentStep.get("rowMetadata").getAsString();
+			        			
+			        			File stepRowMetadataFile = new File(preparationsLocation + "/StepRowMetadata-" + stepRowMetadataId); // StepRowMetadata 삭제
+			        			if(stepRowMetadataFile.isFile()) {
+			            			stepRowMetadataFile.delete();        				
+			        			}
+		        			}
+		    	        } 
+		        		catch (IOException e) {
+		        			e.printStackTrace();
+		    	        } 
+		        		finally {
+		        			persistentStepFile.delete();
+		    	        }    			
+		    		}
+				}								
+			}
+		}
+		
+		// 데이터셋 파일 제거 (Dataset, Metadata)
+		jsonStr = (String)springRedisTemplateUtil.valueGet("LIST_OF_DATASET_INFO_" + nodeNo);
+		if(StringUtils.isNotBlank(jsonStr)) {
+			JsonArray gsonArrayDatasetInfo = new JsonParser().parse(jsonStr).getAsJsonArray();
+			
+			List<ProcessingInfomationVO> datasetInfo = gson.fromJson(gsonArrayDatasetInfo, new TypeToken<List<ProcessingInfomationVO>>() {}.getType());
+			if(0 < datasetInfo.size()) {
+				for(int i = 0, len = datasetInfo.size(); i < len; i++) {
+			    	boolean isPossibleLock = reentrantLock.isLocked(); // Lock을 걸 수 있는지 확인
+			    	if(!isPossibleLock) {
+			    		try {			    		
+				    		reentrantLock.lock();
+				    		
+				    		ProcessingInfomationVO processingInfomationVO = datasetInfo.get(i);
+				    		List<String> datasetIds = processingInfomationVO.getDatasetIds();
+				    		
+							// 분할된 파일중 excludeSplitIdx 이외의 Preparation 제거
+				    		for(int j = datasetIds.size() - 1; j >= 0; j--) {
+				    			int splitIdx = Integer.parseInt(datasetIds.get(j).split("-")[4].substring(8));
+				    			if(excludeSplitIdx == splitIdx) {
+				    				datasetIds.remove(j);
+				    				break;
+				    			}
+				    		}
+				    		
+				    		this.deleteDatasetById(datasetIds, dependenceWait);
+				    		
+				    		Thread.sleep(1000);
+			    		}
+			    		catch (InterruptedException e) {
+							e.printStackTrace();
+						}
+			    		finally {
+			    			reentrantLock.unlock();
+			    		}
+			    	}
+				}
+			}
+		}
+    }    
 }

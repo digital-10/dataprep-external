@@ -12,12 +12,10 @@ import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
-import java.util.Properties;
 import java.util.concurrent.ExecutionException;
 
 import javax.annotation.PostConstruct;
 
-import org.apache.commons.lang.StringUtils;
 import org.apache.http.client.utils.URIBuilder;
 import org.asynchttpclient.AsyncHttpClient;
 import org.asynchttpclient.Dsl;
@@ -63,21 +61,23 @@ public class PcnApiUtil {
         clientBuilder = Dsl.config();
         clientBuilder.setRequestTimeout(90000);
 
-        if(StringUtils.isBlank(pcnApiHost)) {
-        	Properties properties = new PropertiesUtil().getProperties();
-        	
-        	pcnApiEnabled = new Boolean(properties.getProperty("pcn.api.enabled")).booleanValue();
-            pcnApiHost = properties.getProperty("pcn.api.host");
-            pcnApiId = properties.getProperty("pcn.api.id");
-            pcnApiSecret = properties.getProperty("pcn.api.secret");
-        }
+    	PropertiesUtil properties = Singleton.getInstance().getPropertiesUtil();
+    	
+    	pcnApiEnabled = new Boolean(properties.getProperty("pcn.api.enabled")).booleanValue();
+        pcnApiHost = properties.getProperty("pcn.api.host");
+        pcnApiId = properties.getProperty("pcn.api.id");
+        pcnApiSecret = properties.getProperty("pcn.api.secret");
        
         return this;
 	}	
 	
 	// 토큰키
 	public String getAuth() {
-		if(!pcnApiEnabled) {
+		return this.getAuth(false);
+	}	
+	
+	public String getAuth(boolean isTest) {
+		if(!isTest && !pcnApiEnabled) {
 			return "";
 		}
 		
@@ -115,7 +115,7 @@ public class PcnApiUtil {
     			try { asyncHttpClient.close(); } catch (IOException e) {}    			
     		}
     	}
-    	return "";
+    	return "";		
 	}
 	
 	public String getWsId(String token) {
@@ -141,7 +141,7 @@ public class PcnApiUtil {
 					JsonObject gsonObject = new JsonParser().parse(response.getResponseBody()).getAsJsonObject();
 					
 					if("success".equals(gsonObject.get("result").getAsString())) {
-						gsonArray = singleton.setWsIds(gsonObject.get("body").getAsJsonArray());				
+						gsonArray = singleton.setWsIds(this.sorted(gsonObject.get("body").getAsJsonArray(), "wsId", "asc"));
 					}
 				}
 		    	catch (JsonSyntaxException | URISyntaxException | InterruptedException | ExecutionException e) {
@@ -151,38 +151,18 @@ public class PcnApiUtil {
 		    		if(null != asyncHttpClient) {
 		    			try { asyncHttpClient.close(); } catch (IOException e) {}    			
 		    		}
-		    	}
-			}
-//			else {
-//				JsonObject gsonObject = new JsonObject();
-//				gsonObject.addProperty("wsId", "6");
-//				gsonObject.addProperty("percent", "25");
-//				gsonArray.add(gsonObject);
-//
-//				gsonObject = new JsonObject();
-//				gsonObject.addProperty("wsId", "8");
-//				gsonObject.addProperty("percent", "25");    		
-//				gsonArray.add(gsonObject);				
-//				
-//				gsonObject = new JsonObject();
-//				gsonObject.addProperty("wsId", "7");
-//				gsonObject.addProperty("percent", "25");
-//				gsonArray.add(gsonObject);
-				
-//				gsonObject = new JsonObject();
-//				gsonObject.addProperty("wsId", "9");
-//				gsonObject.addProperty("percent", "25");    		
-//				gsonArray.add(gsonObject);
-//			}
-			gsonArray = singleton.setWsIds(this.sorted(gsonArray, "wsId", "asc"));			
+		    	}		    	
+			}			
+		}
+		else {
+			gsonArray = singleton.setWsIds(this.sorted(gsonArray, "wsId", "asc"));
 		}
 		
 		return this.extractWsId(gsonArray);
 	}
 	
 	public String getWsId() {
-		Singleton singleton = Singleton.getInstance();
-		JsonArray gsonArray = singleton.getWsIds();
+		JsonArray gsonArray = Singleton.getInstance().getWsIds();
 		
 		if(null == gsonArray || 0 == gsonArray.size()) {
 			return "";
@@ -190,11 +170,10 @@ public class PcnApiUtil {
 		else {
 			return this.extractWsId(gsonArray);
 		}
-	}		
+	}
 	
 	public String getNextWsId(String token) {
-		Singleton singleton = Singleton.getInstance();
-		JsonArray gsonArray = singleton.getWsIds();
+		JsonArray gsonArray = Singleton.getInstance().getWsIds();
 		
 		if(null == gsonArray || 0 == gsonArray.size()) {
 			return this.getWsId(token);
