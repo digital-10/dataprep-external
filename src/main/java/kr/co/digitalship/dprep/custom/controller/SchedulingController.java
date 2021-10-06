@@ -2,9 +2,11 @@ package kr.co.digitalship.dprep.custom.controller;
 
 import static org.springframework.web.bind.annotation.RequestMethod.GET;
 
-import java.io.IOException;
 import java.net.URISyntaxException;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -15,13 +17,9 @@ import javax.annotation.PostConstruct;
 
 import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
 
-import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.StringUtils;
-import org.apache.hadoop.fs.FSDataInputStream;
-import org.apache.hadoop.fs.FileSystem;
-import org.apache.hadoop.fs.Path;
 import org.apache.http.client.utils.URIBuilder;
-import org.quartz.JobExecutionContext;
+import org.quartz.JobKey;
 import org.quartz.Scheduler;
 import org.quartz.SchedulerException;
 import org.slf4j.Logger;
@@ -36,7 +34,9 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.google.gson.reflect.TypeToken;
 
@@ -45,10 +45,13 @@ import kr.co.digitalship.dprep.custom.PcnApiUtil;
 import kr.co.digitalship.dprep.custom.PropertiesUtil;
 import kr.co.digitalship.dprep.custom.Singleton;
 import kr.co.digitalship.dprep.custom.redis.SpringRedisTemplateUtil;
+import kr.co.digitalship.dprep.custom.schedule.job.Job1Read;
 import kr.co.digitalship.dprep.custom.schedule.job.Job2CreateDataset;
 import kr.co.digitalship.dprep.custom.schedule.job.Job4Export;
+import kr.co.digitalship.dprep.custom.schedule.job.listener.ListenerJob1;
 import kr.co.digitalship.dprep.custom.schedule.job.listener.ListenerJob2;
 import kr.co.digitalship.dprep.custom.schedule.job.listener.ListenerJob4;
+import kr.co.digitalship.dprep.custom.schedule.job.listener.ListenerTrigger1;
 import kr.co.digitalship.dprep.custom.schedule.job.listener.ListenerTrigger2;
 import kr.co.digitalship.dprep.custom.schedule.job.listener.ListenerTrigger4;
 import kr.co.digitalship.dprep.custom.schedule.util.DprepUtil;
@@ -81,6 +84,15 @@ public class SchedulingController {
 	
 	@Autowired
 	SchedulerFactoryBean factory;
+	
+	@Autowired
+	private Job1Read job1Read;
+	
+	@Autowired
+	private ListenerJob1 listenerJob1;
+	
+	@Autowired
+	private ListenerTrigger1 listenerTrigger1;	
 	
 	@Autowired
 	private Job2CreateDataset job2CreateDataset;
@@ -126,13 +138,67 @@ public class SchedulingController {
 	 * @throws Exception
 	 */
 	@RequestMapping(value = "/scheduling/addWsId/{wsId}", method = GET, produces = APPLICATION_JSON_VALUE)
-	public String start(@PathVariable String wsId) throws Exception {
+	public String addWsId(@PathVariable String wsId) throws Exception {
 		Singleton singleton = Singleton.getInstance();
-		if(StringUtils.isNotBlank(wsId)) {
-			singleton.addWsId(wsId);
+		singleton.addWsId(wsId);
+		
+		JsonObject gsonObject = new JsonObject();
+		JsonArray gsonArray = new JsonArray();
+		
+		gsonObject.addProperty("Added WS_ID", wsId);
+		
+		JsonArray wsIds = Singleton.getInstance().getWsIds();
+		
+		for(int i = 0, len = wsIds.size(); i < len; i++) {
+			if(0 == i) {
+				gsonObject.addProperty("Running WS_ID", wsIds.get(i).getAsJsonObject().get("wsId").getAsString());
+			}
+			else {
+				gsonArray.add(wsIds.get(i).getAsJsonObject().get("wsId").getAsString());					
+			}
 		}
+		gsonObject.add("WS_ID Queue", gsonArray);
+		
+		Gson gson = new GsonBuilder().setPrettyPrinting().create();
+		return gson.toJson(gsonObject);
+	}
+	
+	@RequestMapping(value = "/scheduling/delWsId/{wsId}", method = GET, produces = APPLICATION_JSON_VALUE)
+	public String delWsId(@PathVariable String wsId) throws Exception {
+		Singleton singleton = Singleton.getInstance();
+		JsonArray wsIds = singleton.getWsIds();
 
-		return "(Added) Current WsIds : " + singleton.getWsIds().toString();
+		JsonObject gsonObject = new JsonObject();
+		JsonArray gsonArray = new JsonArray();		
+		
+		if(null != wsIds) {
+			for(int i = 0, len = wsIds.size(); i < len; i++) {
+				String compareWsId = wsIds.get(i).getAsJsonObject().get("wsId").getAsString();
+				if(wsId.equals(compareWsId)) {
+					if(pcnApiUtil.getWsId().equals(compareWsId)) {
+						gsonObject.addProperty("Cannot be Deleted Because This WS_ID is Currently Running", wsId);
+					}
+					else {
+						gsonObject.addProperty("Deleted WS_ID", wsId);					
+						wsIds.remove(i);						
+					}					
+					break;
+				}
+			}
+			
+			for(int i = 0, len = wsIds.size(); i < len; i++) {
+				if(0 == i) {
+					gsonObject.addProperty("Running WS_ID", wsIds.get(i).getAsJsonObject().get("wsId").getAsString());
+				}
+				else {
+					gsonArray.add(wsIds.get(i).getAsJsonObject().get("wsId").getAsString());					
+				}
+			}
+			gsonObject.add("WS_ID Queue", gsonArray);
+		}
+		
+		Gson gson = new GsonBuilder().setPrettyPrinting().create();
+		return gson.toJson(gsonObject);		
 	}
 
 	/**
@@ -143,14 +209,14 @@ public class SchedulingController {
 	@RequestMapping(value = "/scheduling/addJobToNode", method = GET, produces = APPLICATION_JSON_VALUE)
 	public String addJobToNode(@RequestParam(defaultValue = "", required = true) String jobName) {
 		if(0 == nodeNo) {
-			LOGGER.debug(String.format("Nothing add for Node %d", nodeNo));
+			LOGGER.debug(String.format("Do not add anything on node %d", nodeNo));
 		}
 		else {
-			Scheduler scheduler = factory.getScheduler();
-			
 			@SuppressWarnings("unchecked")
 			List<String> jobStatusNode = (List<String>)springRedisTemplateUtil.valueGet("JOB_STATUS_NODE_" + nodeNo);
 			if(null != jobStatusNode) {
+				Scheduler scheduler = factory.getScheduler();
+				
 	        	if("NEW".equals(jobStatusNode.get(1)) && "job2CreateDataset".equals(jobName)) {
 	        		DprepHttpUtil.counter = new AtomicInteger(counter);
 	            	QuartzConfigUtil.scheduleJob(scheduler, job2CreateDataset, listenerJob2, listenerTrigger2);
@@ -166,66 +232,152 @@ public class SchedulingController {
 			}
 		}
 
-		return "";
+		return "success";
 	}
+	
+	@RequestMapping(value = "/scheduling/delPrevDprepDataFormNode", method = GET, produces = APPLICATION_JSON_VALUE)
+	public String delPrevDprepDataFormNode() throws Exception {
+		if(0 == nodeNo) {
+			LOGGER.debug(String.format("Do not delete anything on node %d", nodeNo));
+		}
+		else {
+			dprepUtil.deleteDprepData(0);
+		}
+		
+		return "success";
+	}	
 
 	/**
 	 * 단순 WS_ID 현재&대기열 / 노드별 Job Status 확인용 
 	 * @return
 	 */
+	@RequestMapping(value = "/scheduling/jobStatus", method = GET, produces = APPLICATION_JSON_VALUE)	
+	public String jobStatus() throws Exception {
+		return this.jobStatus("cur");
+	}
+	
 	@SuppressWarnings("unchecked")
-	@RequestMapping(value = "/scheduling/jobStatus", method = GET, produces = APPLICATION_JSON_VALUE)
-	public String jobStatus() {
-		StringBuilder stringBuilder = new StringBuilder("WS_ID Queue : ");
-		
-		if(null != Singleton.getInstance().getWsIds()) {
-			stringBuilder.append(Singleton.getInstance().getWsIds().toString());			
-		}
-		stringBuilder.append(" | ");
-
-		for(int i = 0; i < nodeCount; i++) {
-			List<String> jobStatusNode = (List<String>)springRedisTemplateUtil.valueGet("JOB_STATUS_NODE_" + i);
-			List<String> jobRunningStartTime = (List<String>)springRedisTemplateUtil.valueGet("JOB_RUNNING_START_TIME_" + i);
-			List<String> jobRunningEndTime = (List<String>)springRedisTemplateUtil.valueGet("JOB_RUNNING_END_TIME_" + i);
-			List<String> listOfFiles = (List<String>)springRedisTemplateUtil.valueGet("LIST_OF_FILES_TO_BE_PROCESSED_" + i);
-
-			int lineCnt = 0;
-			String jsonStrDatasetInfo = (String)springRedisTemplateUtil.valueGet("LIST_OF_DATASET_INFO_" + i);
-			if(StringUtils.isNotBlank(jsonStrDatasetInfo)) {
-				JsonArray gsonArrayDatasetInfo = new JsonParser().parse(jsonStrDatasetInfo).getAsJsonArray();
-				
-				Gson gson = new Gson();
-				List<ProcessingInfomationVO> datasetInfo = gson.fromJson(gsonArrayDatasetInfo, new TypeToken<List<ProcessingInfomationVO>>() {}.getType());
-				for(int j = 0, jLen = datasetInfo.size(); j < jLen; j++) {
-					lineCnt += datasetInfo.get(j).getLineCnt(); 
+	@RequestMapping(value = "/scheduling/jobStatus/{point}", method = GET, produces = APPLICATION_JSON_VALUE)
+	public String jobStatus(@PathVariable String point) throws Exception {
+		if(!StringUtils.isBlank(point) && "prev".equals(point)) {
+			String allJobDoneResult = (String)springRedisTemplateUtil.valueGet("ALL_JOB_DONE_RESULT");
+			
+			return allJobDoneResult;
+		} 
+		else {
+			Gson gson = new GsonBuilder().setPrettyPrinting().create();
+			JsonObject gsonObject = new JsonObject();
+			
+			JsonArray wsIds = Singleton.getInstance().getWsIds();
+			if(null != wsIds && 0 < wsIds.size()) {
+				JsonArray gsonArray = new JsonArray();
+				for(int i = 0, len = wsIds.size(); i < len; i++) {
+					if(0 == i) {
+						gsonObject.addProperty("Running WS_ID", wsIds.get(i).getAsJsonObject().get("wsId").getAsString());
+					}
+					else {
+						gsonArray.add(wsIds.get(i).getAsJsonObject().get("wsId").getAsString());
+					}
 				}
-			}
-			
-			stringBuilder.append("Node(").append(i).append(") : ");
-			if(null != jobStatusNode) {
-				stringBuilder.append(jobStatusNode);
-			}
-			
-			if(null != jobRunningStartTime) {
-				stringBuilder.append(", Job Start Time : ").append(jobRunningStartTime);
-			}
-			
-			if(null != jobRunningStartTime) {
-				stringBuilder.append(", Job End Time : ").append(jobRunningEndTime);
-			}					
-			
-			if(null != listOfFiles) {
-				stringBuilder.append(", Total File Count : ").append(listOfFiles.size());
-			}			
-			stringBuilder.append(", Total Line Count : ").append(lineCnt);
-			
-			if(i < nodeCount - 1) {
-				stringBuilder.append(" | ");
-			}
-			LOGGER.debug(stringBuilder.toString());
-		}			
+				gsonObject.add("WS_ID Queue", gsonArray);
+				
+				int totalFileCnt = 0;
+				int totalDataRowCnt = 0;				
+				
+				gsonArray = new JsonArray();
+				for(int i = 0; i < nodeCount; i++) {
+					List<String> listOfFiles = (List<String>)springRedisTemplateUtil.valueGet("LIST_OF_FILES_TO_BE_PROCESSED_" + i);
+					List<String> jobStatusNode = (List<String>)springRedisTemplateUtil.valueGet("JOB_STATUS_NODE_" + i);
+					List<String> jobRunningStartTime = (List<String>)springRedisTemplateUtil.valueGet("JOB_RUNNING_START_TIME_" + i);
+					List<String> jobRunningEndTime = (List<String>)springRedisTemplateUtil.valueGet("JOB_RUNNING_END_TIME_" + i);
+					
+					JsonObject gsonObjectSub = new JsonObject();
+					gsonObjectSub.addProperty("Node No", i);
+					
+					if(null != listOfFiles) {
+						gsonObjectSub.addProperty("File Count", listOfFiles.size());
+						
+						totalFileCnt += listOfFiles.size();
+					}
+					
+					int dataRowCnt = 0;
+					String jsonStrDatasetInfo = (String)springRedisTemplateUtil.valueGet("LIST_OF_DATASET_INFO_" + i);
+					if(StringUtils.isNotBlank(jsonStrDatasetInfo)) {
+						JsonArray gsonArrayDatasetInfo = new JsonParser().parse(jsonStrDatasetInfo).getAsJsonArray();
+						
+						List<ProcessingInfomationVO> datasetInfo = gson.fromJson(gsonArrayDatasetInfo, new TypeToken<List<ProcessingInfomationVO>>() {}.getType());
+						for(int j = 0, jLen = datasetInfo.size(); j < jLen; j++) {
+							dataRowCnt += datasetInfo.get(j).getLineCnt(); 
+						}
+						gsonObjectSub.addProperty("Data Rows", dataRowCnt);
+						
+						totalDataRowCnt += dataRowCnt;
+					}										
 
-		return stringBuilder.toString();
+					if(null != jobStatusNode) {
+						JsonArray gsonArraySub = new JsonArray();
+						for(int j = 0, jlen = jobStatusNode.size(); j < jlen; j++) {
+							gsonArraySub.add(jobStatusNode.get(j));							
+						}
+						gsonObjectSub.add("Job Status", gsonArraySub);
+					}
+					
+					if(null != jobRunningStartTime) {
+						JsonArray gsonArraySub = new JsonArray();
+						for(int j = 0, jlen = jobRunningStartTime.size(); j < jlen; j++) {
+							gsonArraySub.add(jobRunningStartTime.get(j));							
+						}
+						gsonObjectSub.add("Job Start Time", gsonArraySub);
+					}
+					
+					if(null != jobRunningEndTime) {
+						JsonArray gsonArraySub = new JsonArray();
+						for(int j = 0, jlen = jobRunningEndTime.size(); j < jlen; j++) {
+							gsonArraySub.add(jobRunningEndTime.get(j));							
+						}
+						gsonObjectSub.add("Job End Time", gsonArraySub);
+					}					
+					
+					gsonArray.add(gsonObjectSub);
+				}
+				gsonObject.add("Info", gsonArray);
+				gsonObject.addProperty("Total File Count", totalFileCnt);
+				gsonObject.addProperty("Total Data Rows", totalDataRowCnt);
+				
+				int node0 = -1;
+				try {
+					node0 = (Integer)springRedisTemplateUtil.valueGet("NODE_0");
+				} 
+				catch (Exception e) {}
+				
+				if(-1 < node0) {
+					List<String> jobRunningStartTime = (List<String>)springRedisTemplateUtil.valueGet("JOB_RUNNING_START_TIME_" + node0);
+					List<String> jobRunningEndTime = (List<String>)springRedisTemplateUtil.valueGet("JOB_RUNNING_END_TIME_" + node0);
+					
+					String startTime = jobRunningStartTime.get(1);
+					String endTime = jobRunningEndTime.get(jobRunningEndTime.size() - 1);
+					
+					try {
+						Date startDate = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.S").parse(startTime);
+						Date endDate = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.S").parse(endTime);
+						
+						long diff = endDate.getTime() - startDate.getTime();
+						long d = diff / (1000 * 60 * 60 * 24);
+						long h = (diff / (1000 * 60 * 60)) % 24;
+						long m = (diff / (1000 * 60)) % 60;
+						long s = (diff / 1000) % 60;
+						long ss = diff % 1000;
+						
+						gsonObject.addProperty("Total Running Time", String.format("약 %d일 %d시간 %d분 %d.%d초", d, h, m, s, ss));
+					} 
+					catch (ParseException e) {
+					}
+				}				
+				
+				return gson.toJson(gsonObject);
+			}			
+			return "No WS_IDs target for operation";
+		}
 	}
 	
 	/**
@@ -272,18 +424,12 @@ public class SchedulingController {
 		
 		try {
 			Scheduler scheduler = factory.getScheduler();
-			List<JobExecutionContext> currentJobs = scheduler.getCurrentlyExecutingJobs();
+
+			scheduler.deleteJob(JobKey.jobKey("Job1Read", "ProfilingBatch"));
+			scheduler.deleteJob(JobKey.jobKey("Job2CreateDataset", "ProfilingBatch"));
+			scheduler.deleteJob(JobKey.jobKey("Job3CopyRecipe", "ProfilingBatch"));
+			scheduler.deleteJob(JobKey.jobKey("Job4Export", "ProfilingBatch"));
 			
-			// Job 의 제거
-	        for(JobExecutionContext ctx : currentJobs) {
-	            String ctxGroupName = ctx.getJobDetail().getKey().getGroup();
-	            
-	            if("ProfilingBatch".equals(ctxGroupName)) {
-	            	LOGGER.debug(String.format("Delete job %s Node (%d)", ctx.getJobDetail().getKey().getName(), nodeNo));
-	            	QuartzConfigUtil.deleteJob(ctx);
-	            }
-	        }
-	        
         	// 이전 작업에 대한 초기화를 위해...
 	        int lastStep = -1;
             @SuppressWarnings("unchecked")
@@ -317,6 +463,8 @@ public class SchedulingController {
     	            springRedisTemplateUtil.delete(deleteKeys);
                 }            	
             }
+            
+            QuartzConfigUtil.scheduleJob(scheduler, job1Read, listenerJob1, listenerTrigger1);
 		} 
 		catch (SchedulerException e) {
 			e.printStackTrace();
@@ -326,50 +474,6 @@ public class SchedulingController {
 			pcnApiUtil.getNextWsId(pcnApiUtil.getAuth());
 		}
 
-		return "";
-	}	
-	
-	/**
-	 * Hadoop Write 테스트
-	 * @return
-	 * @throws Exception
-	 */
-	@RequestMapping(value = "/test/connect/hadoop", method = GET, produces = APPLICATION_JSON_VALUE)
-	public String testConnectHadoop() throws Exception {
-		String content = "Hadoop Write Disabled";
-		
-		FileSystem fs = hadoopUtil.getFs();
-		try {
-			hadoopUtil.write(fs, "Hadoop Write Enabled", "", "", "HADOOP_WRITE.TEST");
-			
-			FSDataInputStream FSDataInputStream = fs.open(new Path("/HADOOP_WRITE.TEST"));
-			content = IOUtils.toString(FSDataInputStream, "UTF-8");
-			
-			fs.delete(new Path("/HADOOP_WRITE.TEST"), false);
-		} 
-		catch (IllegalArgumentException | IOException e) {
-			e.printStackTrace();
-		}
-		finally {
-			fs.close();
-		}
-		
-		return content;
-	}
-
-	/**
-	 * Redis Write 테스트
-	 * @return
-	 * @throws Exception
-	 */
-	@RequestMapping(value = "/test/connect/redis", method = GET, produces = APPLICATION_JSON_VALUE)
-	public String testConnectRedis() throws Exception {
-		String result = "Redis Connect Disable";
-		springRedisTemplateUtil.valueSet("REDIS_CONNECT_TEST", "Redis Connected");
-		
-		result = (String)springRedisTemplateUtil.valueGet("REDIS_CONNECT_TEST");
-		springRedisTemplateUtil.delete("REDIS_CONNECT_TEST");
-		
-		return result;
+		return "success";
 	}
 }
