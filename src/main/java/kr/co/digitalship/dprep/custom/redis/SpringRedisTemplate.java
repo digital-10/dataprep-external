@@ -1,5 +1,7 @@
 package kr.co.digitalship.dprep.custom.redis;
 
+import javax.annotation.PostConstruct;
+
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.pool2.impl.GenericObjectPoolConfig;
 import org.springframework.beans.factory.annotation.Value;
@@ -20,6 +22,8 @@ import org.springframework.data.redis.serializer.StringRedisSerializer;
 import io.lettuce.core.ClientOptions;
 import io.lettuce.core.resource.ClientResources;
 import io.lettuce.core.resource.DefaultClientResources;
+import kr.co.digitalship.dprep.custom.PropertiesUtil;
+import kr.co.digitalship.dprep.custom.Singleton;
 
 @Configuration
 @PropertySource(value = {
@@ -45,6 +49,16 @@ public class SpringRedisTemplate {
     
     @Value("${spring.redis.password:}")
     private String redisPassword;
+    
+    @PostConstruct
+    public void init() {
+		PropertiesUtil properties = Singleton.getInstance().getPropertiesUtil();
+		
+		transfomationEnabled = Boolean.parseBoolean(properties.getProperty("spring.redis.transformation.enabled"));
+		redisHost = properties.getProperty("spring.redis.host");
+		redisPort = Integer.parseInt(properties.getProperty("spring.redis.port"));
+		redisPassword = properties.getProperty("spring.redis.password");
+    }    
 /*
     @Bean
 	public RedisConnectionFactory redisConnectionFactory() {

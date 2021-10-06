@@ -5,6 +5,8 @@ import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
 
 import java.io.IOException;
 
+import javax.annotation.PostConstruct;
+
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -16,6 +18,8 @@ import org.talend.dataprep.api.dataset.DataSetMetadata;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import kr.co.digitalship.dprep.custom.PropertiesUtil;
+import kr.co.digitalship.dprep.custom.Singleton;
 import kr.co.digitalship.dprep.custom.schedule.util.HadoopUtil;
 
 @RestController
@@ -30,6 +34,13 @@ public class MetaProfilingController {
     @Autowired
     private ObjectMapper mapper;
 	
+    @PostConstruct
+    public void init() {
+		PropertiesUtil properties = Singleton.getInstance().getPropertiesUtil();
+
+		hadoopResultRegBasePath = properties.getProperty("hadoop.result.reg.base.path");
+    }  	    
+    
 	@RequestMapping(value = "/view/meta", method = GET, produces = APPLICATION_JSON_VALUE)
 	public DataSetMetadata getMeta(@RequestParam String wsId) throws Exception {
 		String jsonStr = hadoopUtil.getStr(hadoopResultRegBasePath + "/" + wsId + "/metadata.json");
