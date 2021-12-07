@@ -43,6 +43,7 @@ import org.talend.dataprep.api.dataset.RowMetadata;
 import org.talend.dataprep.api.dataset.statistics.SemanticDomain;
 import org.talend.dataprep.command.preparation.GetStepRowMetadata;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
@@ -113,6 +114,9 @@ public class DprepUtil {
 	@Autowired
 	private SpringRedisTemplateUtil springRedisTemplateUtil;    
     
+    @Autowired
+    private ObjectMapper mapper;	
+	
     private DprepHttpUtil dprepHttpUtil;
     
     private HadoopUtil hadoopUtil;
@@ -482,6 +486,213 @@ public class DprepUtil {
     	return response.getResponseBody();
     }
     
+    /**
+     * PersistentPreparation 을 복제 (초기 - 전처리 전/후 비교를 위해 도메인 정보만 일부 변경한 레시피의 복제)
+     * @param preparationId
+     * @param datasetId
+     * @param fileName
+     * @param waitTime
+     * @return
+     */
+    public String initCopyPersistentPreparation(String preparationId, String datasetId, String fileName, int waitTime) {
+    	Map<String, String> params = new HashMap<>();
+    	params.put("path", dprepHttpUtil.getPreparationInitCopyPath(preparationId));
+    	params.put("preparationId", preparationId);
+    	params.put("datasetId", datasetId);
+    	params.put("name", fileName + " Preparation");
+    	params.put("destination", "Lw==");
+    	
+    	Response response = null;
+    	while(null == response || StringUtils.isBlank(response.getResponseBody())) {
+    		response = dprepHttpUtil.callSyncGet(preparationServiceUrl[nodeNo], params, waitTime);
+    		
+    		if(0 < waitTime && (null == response || StringUtils.isBlank(response.getResponseBody()))) {
+	    		try {
+					Thread.sleep(waitTime);
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}	    			
+    		}    		
+    	}
+    	
+		// 
+    	if(200 != response.getStatusCode()) {
+    		//JsonObject gsonObject = new JsonParser().parse(response.getResponseBody()).getAsJsonObject();        		
+    		//if("TDP_PS_PREPARATION_NAME_ALREADY_USED".equals(gsonObject.get("code").getAsString())) {
+    		//	return null;
+    		//}
+    		return null;
+    	}
+    	
+    	return response.getResponseBody();
+    }
+    
+    public String initRecipe(String datasetId) {
+    	String preparationId = null;
+    	
+		try {
+			// PersistentPreparation 생성
+		    String preparationName = "init preparation";
+		    URIBuilder uriBuilder = new URIBuilder(preparationServiceUrl[nodeNo]);
+
+			String preparationInitPath = "/api/preparations"; // POST - json
+			uriBuilder.setPath(preparationInitPath);
+			uriBuilder.addParameter("folder", "Lw==");
+			
+			JsonObject jsonObject = new JsonObject();
+			jsonObject.addProperty("name", preparationName);
+			jsonObject.addProperty("dataSetId", datasetId);
+			
+			Response response = dprepHttpUtil.callSyncJson(uriBuilder, "post", jsonObject);			
+			preparationId = response.getResponseBody();
+
+			// 4번째 컬럼 정보 확인
+			String domainTypePath1 = String.format("/api/datasets/%s/columns/%s/types", datasetId, "0003"); // GET - json
+			uriBuilder.setPath(domainTypePath1);
+			
+			response = dprepHttpUtil.callSyncJson(uriBuilder, "get", null);			
+			JsonArray type1 = new Gson().fromJson(response.getResponseBody(), JsonArray.class);			
+			
+			// 4번째 컬럼 도메인 변경
+			String doaminChangeActionPath = String.format("/api/preparations/%s/actions", preparationId); // POST - json
+			uriBuilder.setPath(doaminChangeActionPath);
+			
+			// type1 에서 new 항목에 대해서 뽑아야... (new_domain_frequency)
+			JsonObject parameters = new JsonObject();
+			parameters.addProperty("scope", "column");
+			parameters.addProperty("column_id", "0003");
+			parameters.addProperty("column_name", "4열");
+			parameters.addProperty("new_domain_id", "초미세먼지");
+			parameters.addProperty("new_domain_label", "초미세먼지");			
+			
+			for(int i = 0, len = type1.size(); i < len; i++) {
+				if("초미세먼지".equals(type1.get(i).getAsJsonObject().get("id").getAsString())) {
+					parameters.addProperty("new_domain_frequency", type1.get(i).getAsJsonObject().get("frequency").getAsString());
+				}
+			}
+			
+			JsonObject action = new JsonObject();
+			action.addProperty("action", "domain_change");
+			action.add("parameters", parameters);
+			
+			JsonArray actions = new JsonArray();
+			actions.add(action);
+			
+			jsonObject = new JsonObject();
+			jsonObject.add("actions", actions);
+			
+			response = dprepHttpUtil.callSyncJson(uriBuilder, "post", jsonObject);
+			
+			// 6번째 컬럼 정보 확인
+			String domainTypePath2 = String.format("/api/datasets/%s/columns/%s/types", datasetId, "0005"); // GET - json
+			uriBuilder.setPath(domainTypePath2);
+			
+			response = dprepHttpUtil.callSyncJson(uriBuilder, "get", null);
+			JsonArray type2 = new Gson().fromJson(response.getResponseBody(), JsonArray.class);		
+			
+			// 6번째 컬럼 도메인 변경
+			doaminChangeActionPath = String.format("/api/preparations/%s/actions", preparationId); // POST - json
+			uriBuilder.setPath(doaminChangeActionPath);
+			
+			// type2 에서 new 항목에 대해서 뽑아야... (new_domain_frequency)
+			parameters = new JsonObject();
+			parameters.addProperty("scope", "column");
+			parameters.addProperty("column_id", "0005");
+			parameters.addProperty("column_name", "6열");
+			parameters.addProperty("new_domain_id", "습도");
+			parameters.addProperty("new_domain_label", "습도");
+			
+			for(int i = 0, len = type2.size(); i < len; i++) {
+				if("습도".equals(type2.get(i).getAsJsonObject().get("id").getAsString())) {
+					parameters.addProperty("new_domain_frequency", type2.get(i).getAsJsonObject().get("frequency").getAsString());
+				}
+			}			
+			
+			action = new JsonObject();
+			action.addProperty("action", "domain_change");
+			action.add("parameters", parameters);
+			
+			actions = new JsonArray();
+			actions.add(action);
+			
+			jsonObject = new JsonObject();
+			jsonObject.add("actions", actions);
+			
+			response = dprepHttpUtil.callSyncJson(uriBuilder, "post", jsonObject);		
+			
+			// PersistentPreparation 반영 (정확한 역활을 잘 모르겠지만...)
+			String completePath = String.format("/api/preparations/%s", preparationId); // PUT - json
+			uriBuilder.setPath(completePath);
+			
+			jsonObject = new JsonObject();
+			jsonObject.addProperty("name", preparationName);		
+			
+			response = dprepHttpUtil.callSyncJson(uriBuilder, "put", jsonObject);
+			
+        	// StepRowMetadata 생성을 위해...export
+			MetadataVO metadataVO = this.getMetadata(datasetId, dependenceWait, true);
+			
+	    	Map<String, String> params = new HashMap<>();
+	    	params.put("path", dprepHttpUtil.getExportPath());    	
+			params.put("exportType", "CSV");
+	    	params.put("exportParameters.csv_fields_delimiter", metadataVO.getDelimiter());    	
+			params.put("exportParameters.csv_enclosure_character", "");
+			params.put("exportParameters.csv_escape_character", "");
+			params.put("exportParameters.csv_enclosure_mode", "text_only");
+			params.put("exportParameters.csv_encoding", metadataVO.getEncoding());
+			
+			params.put("datasetId", datasetId);
+			params.put("preparationId", preparationId);
+			params.put("exportParameters.fileName", preparationName);
+			
+			response = dprepHttpUtil.callSyncGet(transformationServiceUrl[nodeNo], params, dependenceWait);
+		} 
+		catch (URISyntaxException e) {
+			e.printStackTrace();
+		}
+		return preparationId;
+	}
+    
+    // StepRowMetadata
+    
+    public RowMetadata getStepRowMetadata(String preparationId) {
+    	URIBuilder uriBuilder = null;
+    	
+    	try {
+			uriBuilder = new URIBuilder(preparationServiceUrl[nodeNo]);
+		} catch (URISyntaxException e) {
+			e.printStackTrace();
+		}
+		String datailsPath = String.format("/api/preparations/%s/details", preparationId); // GET - json	
+		uriBuilder.setPath(datailsPath);
+		
+		Response response = dprepHttpUtil.callSyncJson(uriBuilder, "get", null);
+		JsonObject persistant = new Gson().fromJson(response.getResponseBody(), JsonObject.class);
+		JsonArray steps = persistant.get("steps").getAsJsonArray();
+
+		RowMetadata rowMetadata = null;
+		for(int i = steps.size() - 1; i >= 0; i--) {
+			String stepId = steps.get(i).getAsString();
+			
+			String getStepMetadataPath = String.format("/preparations/steps/%s/metadata", stepId);
+			uriBuilder.setPath(getStepMetadataPath);
+			
+			response = dprepHttpUtil.callSyncJson(uriBuilder, "get", null);
+			
+			try {
+				rowMetadata = mapper.readValue(response.getResponseBody(), RowMetadata.class);
+			} 
+			catch (IOException e) {
+				e.printStackTrace();
+			}
+			
+			if(null != rowMetadata) {
+				break;
+			}
+		}
+		return rowMetadata;
+    }
+    
     public String extractYearFromFileName(String fileName) {
 		Pattern pattern = Pattern.compile("(19|20)\\d{2}(0[1-9]|1[012])(0[1-9]|[12][0-9]|3[0-1])");
 		Matcher matcher = pattern.matcher(fileName);
@@ -724,10 +935,83 @@ public class DprepUtil {
     }
     
     /**
+     * 초기 도메인 변경만 적용한 레시피의 삭제용
+     * 
      * PersistentPreparation 를 제거한 후 개별 PersistentStep / StepRowMetadata 를 확인하여 제거
      * Dataset / Metadata 제거
      * @param excludeSplitIdx
      */
+    public void deleteDprepData(String preparationId) {
+    	reentrantLock = new ReentrantLock();
+    	
+    	boolean isPossibleLock = reentrantLock.isLocked(); // Lock을 걸 수 있는지 확인
+    	if(!isPossibleLock) {
+    		try {			    		
+	    		reentrantLock.lock();
+	    		
+	    		CopyTargetPreparationInfoVO removeTargetPreparation = this.getPreparationBaseInfo(preparationId, dependenceWait);
+	    		List<String> deletePersistentStepTarget = new ArrayList<>();
+	    		
+	    		if(null != removeTargetPreparation && null != removeTargetPreparation.getSteps()) {
+	    			List<String> steps = removeTargetPreparation.getSteps();
+	    			steps.remove(0); // PersistentPreparation 에 기본 추가되어 있는 디폴트 정보 ( f6e172c33bdacbc69bca9d32b2bd78174712a171 ) 로 실제 파일은 존재하지 않음.
+	    			
+	    			if(0 < steps.size()) {
+	    				deletePersistentStepTarget.addAll(steps);
+	    			}
+	    		}  
+	    		List<String> preparationIds = new ArrayList<>();
+	    		preparationIds.add(preparationId);
+	    		
+	    		this.deletePreparationById(preparationIds, dependenceWait); // PersistentPreparation 삭제
+	    		
+				Thread.sleep(1000);
+				
+				// 잔여 물리 파일 제거 (StepRowMetadata, PersistentStep 삭제, PreparationActions은 일부 공유되고 있으며 확인이 쉽지 않은 관계로 삭제하지 않음.)
+				for(int i = 0, len = deletePersistentStepTarget.size(); i < len; i++) {
+		    		File persistentStepFile = new File(preparationsLocation + "/PersistentStep-" + deletePersistentStepTarget.get(i));
+		    		
+		    		if(persistentStepFile.isFile()) {
+		        		try (InputStream in = Files.newInputStream(Paths.get(persistentStepFile.getPath()), StandardOpenOption.READ); GZIPInputStream gZIPInputStream = new GZIPInputStream(in)) {
+		        			String persistentStep = IOUtils.toString(gZIPInputStream, "UTF-8");
+		        			
+		        			if(StringUtils.isNotBlank(persistentStep)) {
+			        			JsonObject gsonObjectPersistentStep = new JsonParser().parse(persistentStep).getAsJsonObject();
+			        			String preparationActionsId = gsonObjectPersistentStep.get("contentId").getAsString();
+			        			
+			        			File preparationActionsFile = new File(preparationsLocation + "/PreparationActions-" + preparationActionsId); // PreparationActions 삭제
+			        			if(preparationActionsFile.isFile()) {
+			        				preparationActionsFile.delete();        				
+			        			}
+			        			
+			        			if(null != gsonObjectPersistentStep.get("rowMetadata")) {
+				        			String stepRowMetadataId = gsonObjectPersistentStep.get("rowMetadata").getAsString();
+				        			
+				        			File stepRowMetadataFile = new File(preparationsLocation + "/StepRowMetadata-" + stepRowMetadataId); // StepRowMetadata 삭제
+				        			if(stepRowMetadataFile.isFile()) {
+				            			stepRowMetadataFile.delete();        				
+				        			}			        				
+			        			}
+		        			}
+		    	        } 
+		        		catch (IOException | NullPointerException e) {
+		        			e.printStackTrace();
+		    	        } 
+		        		finally {
+		        			persistentStepFile.delete();
+		    	        }    			
+		    		}
+				}						
+			} 
+    		catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+    		finally {
+    			reentrantLock.unlock();
+    		}
+    	}
+    }
+    
     public void deleteDprepData(int excludeSplitIdx) {
     	Gson gson = new Gson();
     	reentrantLock = new ReentrantLock();
@@ -797,15 +1081,18 @@ public class DprepUtil {
 		        			
 		        			if(StringUtils.isNotBlank(persistentStep)) {
 			        			JsonObject gsonObjectPersistentStep = new JsonParser().parse(persistentStep).getAsJsonObject();
-			        			String stepRowMetadataId = gsonObjectPersistentStep.get("rowMetadata").getAsString();
 			        			
-			        			File stepRowMetadataFile = new File(preparationsLocation + "/StepRowMetadata-" + stepRowMetadataId); // StepRowMetadata 삭제
-			        			if(stepRowMetadataFile.isFile()) {
-			            			stepRowMetadataFile.delete();        				
+			        			if(null != gsonObjectPersistentStep.get("rowMetadata")) {
+				        			String stepRowMetadataId = gsonObjectPersistentStep.get("rowMetadata").getAsString();
+				        			
+				        			File stepRowMetadataFile = new File(preparationsLocation + "/StepRowMetadata-" + stepRowMetadataId); // StepRowMetadata 삭제
+				        			if(stepRowMetadataFile.isFile()) {
+				            			stepRowMetadataFile.delete();        				
+				        			}			        				
 			        			}
 		        			}
 		    	        } 
-		        		catch (IOException e) {
+		        		catch (IOException | NullPointerException e) {
 		        			e.printStackTrace();
 		    	        } 
 		        		finally {

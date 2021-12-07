@@ -359,7 +359,9 @@ public class SJDprepHttpUtil {
         	String persistentStep = IOUtils.toString(gZIPInputStream, "UTF-8");
         	JsonObject gsonObjectPersistentStep = new JsonParser().parse(persistentStep).getAsJsonObject();
         	
-        	rowMetadataId = gsonObjectPersistentStep.get("rowMetadata").getAsString();
+        	if(null != gsonObjectPersistentStep.get("rowMetadata")) {
+            	rowMetadataId = gsonObjectPersistentStep.get("rowMetadata").getAsString();
+        	}
         }
         catch (IOException e) {
         	e.printStackTrace();
@@ -767,20 +769,23 @@ public class SJDprepHttpUtil {
 		        			
 		        			if(StringUtils.isNotBlank(persistentStep)) {
 			        			JsonObject gsonObjectPersistentStep = new JsonParser().parse(persistentStep).getAsJsonObject();
-			        			String rowMetadataId = gsonObjectPersistentStep.get("rowMetadata").getAsString();
+
 			        			String contentId = gsonObjectPersistentStep.get("content").getAsString();
-			        			
-			        			// StepRowMetadata 삭제
-			        			File stepRowMetadataFile = new File(preparationsLocation + "/StepRowMetadata-" + rowMetadataId); 
-			        			if(stepRowMetadataFile.isFile()) {
-			            			stepRowMetadataFile.delete();        				
-			        			}
-			        			
 			        			// PreparationActions 삭제
 			        			File preparationActionsFile = new File(preparationsLocation + "/PreparationActions-" + contentId); 
 			        			if(preparationActionsFile.isFile()) {
 			        				preparationActionsFile.delete();        				
-			        			}		        			
+			        			}	
+			        			
+			        			if(null != gsonObjectPersistentStep.get("rowMetadata")) {
+				        			String rowMetadataId = gsonObjectPersistentStep.get("rowMetadata").getAsString();
+				        			
+				        			// StepRowMetadata 삭제
+				        			File stepRowMetadataFile = new File(preparationsLocation + "/StepRowMetadata-" + rowMetadataId); 
+				        			if(stepRowMetadataFile.isFile()) {
+				            			stepRowMetadataFile.delete();        				
+				        			}				        			
+			        			}
 		        			}
 		    	        } 
 		        		catch (IOException e) {
