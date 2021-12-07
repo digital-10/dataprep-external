@@ -165,6 +165,64 @@
     			return htmlStr;        	
     		}
     		
+            function setDetail3(data) {
+                var len = data.domain.length;
+                
+                var beforeValid = data.before.valid;
+                var beforeInvalid = data.before.invalid;
+                var beforeEmpty = data.before.empty;
+                var afterValid = data.after.valid;
+                var afterInvalid = data.after.invalid;
+                var afterEmpty = data.after.empty;                
+                
+                var htmlStr = "";
+                
+                htmlStr += "<div id='detail3' class='row'>\n";
+                htmlStr += "<span class='cell' style='min-width: 34px; border: 1px solid #DDD;'>\n";             
+                htmlStr += "<div class='table'>\n";
+                htmlStr += "<div class='row'>\n";               
+                htmlStr += "<span class='cellSub' style='text-align:center;'></span>\n";
+                htmlStr += "</div>\n";
+                htmlStr += "<div class='row'>\n";               
+                htmlStr += "<span class='cellSub' style='text-align:center;'>유효</span>\n";
+                htmlStr += "</div>\n";
+                htmlStr += "<div class='row'>\n";               
+                htmlStr += "<span class='cellSub' style='text-align:center;'>무효</span>\n";
+                htmlStr += "</div>\n";
+                htmlStr += "<div class='row'>\n";               
+                htmlStr += "<span class='cellSub' style='text-align:center;'>공백</span>\n";
+                htmlStr += "</div>\n";
+                htmlStr += "</div>\n";
+                htmlStr += "</span>\n";                
+                
+                for(var i = 0; i < len; i++) {
+
+                    htmlStr += "<span class='cell' style='border: 1px solid #DDD;'>\n";             
+                    htmlStr += "<div class='table'>\n";                
+                    htmlStr += "<div class='row'>\n";               
+                    htmlStr += "<span class='cellSub' style='text-align:center;'>전처리전</span>\n";
+                    htmlStr += "<span class='cellSub' style='text-align:center;'>전처리후</span>\n";
+                    htmlStr += "</div>\n";
+                    htmlStr += "<div class='row'>\n";               
+                    htmlStr += "<span class='cellSub' style='text-align:center;'>" + beforeValid[i] + "</span>\n";
+                    htmlStr += "<span class='cellSub' style='text-align:center;'>" + afterValid[i] + "</span>\n";
+                    htmlStr += "</div>\n";
+                    htmlStr += "<div class='row'>\n";               
+                    htmlStr += "<span class='cellSub' style='text-align:center;'>" + beforeInvalid[i] + "</span>\n";
+                    htmlStr += "<span class='cellSub' style='text-align:center;'>" + afterInvalid[i] + "</span>\n";
+                    htmlStr += "</div>\n";
+                    htmlStr += "<div class='row'>\n";               
+                    htmlStr += "<span class='cellSub' style='text-align:center;'>" + beforeEmpty[i] + "</span>\n";
+                    htmlStr += "<span class='cellSub' style='text-align:center;'>" + afterEmpty[i] + "</span>\n";
+                    htmlStr += "</div>\n";
+                    htmlStr += "</div>\n";
+                    htmlStr += "</span>\n";
+                }
+                htmlStr += "</div>\n";
+                
+                return htmlStr;
+            }    		
+    		
     		function chartDraw(column, target) {
     			var ctx = document.getElementById(target).getContext("2d");
     			
@@ -240,8 +298,8 @@
     					},					
     		            hover: { mode: "index", intersect: true },
     		            scales: {
-    		            	yAxes: [ { display: false, stacked: true } ],
-    		            	xAxes: [ { display: false, stacked: true } ]
+    		            	xAxes: [ { display: false, stacked: true } ],
+    		            	yAxes: [ { display: false, stacked: true } ]
     		            },		            
     		            tooltips: {
     		                mode: "index",
@@ -271,6 +329,95 @@
     			});
     		}
     		
+    		function getDiffData() {
+	            var wsId = getUrlParams().wsId;
+	            var url = "/meta/compare/" + wsId;        
+	            
+	            $.ajax({
+	                url: url,
+	                tyep: "GET",
+	                cache: "false",
+	                dataType: "json",
+	                success: function(data, textStatus, jqXHR) {
+	                    if("success" == data.result) {
+                            chartDraw2(data, "canvasSub");
+                            
+                            $("div.group").html(setDetail3(data));                            	                    
+	                    }
+	                },
+	                error: function(jqXHR, textStatus, errorThrown) {
+	                    /*
+	                    if(jqXHR.responseJSON.reason.indexOf("Not Complete")) {
+	                        metaProfiling.pageInitNotComplete(wsId);
+	                    }
+	                    */
+	                }
+	            });
+    		}
+    		
+            function chartDraw2(data, target) {
+                var ctx = document.getElementById(target).getContext("2d");
+                
+                var stackedBarData = {
+                    labels: data.domain,
+                    datasets: [                    
+                    {
+                        label: '전처리전 유효',
+                        data: data.before.valid,
+                        backgroundColor: "#caf270",
+                        stack: '1'
+                    },             
+                    {
+                        label: '전처리전 무효',
+                        data: data.before.invalid,
+                        backgroundColor: "#45c490",
+                        stack: '1',
+                    }, 
+                    {
+                        label: '전처리전 공백',
+                        data: data.before.empty,
+                        backgroundColor: "#008d93",
+                        stack: '1',
+                    },                  
+                    {
+                        label: '전처리후 유효',
+                        data: data.after.valid,
+                        backgroundColor: "#caf270",
+                        stack: '2'
+                    },              
+                    {
+                        label: '전처리후 무효',
+                        data: data.after.invalid,
+                        backgroundColor: "#45c490",
+                        stack: '2',
+                    }, 
+                    {
+                        label: '전처리후 공백',
+                        data: data.after.empty,
+                        backgroundColor: "#008d93",
+                        stack: '2',
+                    }                    
+                    ]
+                };
+                
+                var chart = new Chart(ctx, {
+                    type: "bar",
+                    data: stackedBarData,
+                    options: {
+                        responsive: true,
+                        legend: {
+                            display: true
+                        },
+                        hover: { mode: "index", intersect: true },
+                        scales: {
+                            xAxes: [{ display: true, stacked: true }],
+                            yAxes: [{ display: true, stacked: true }]
+                        },
+                        maintainAspectRatio: false
+                    }               
+                });
+            }
+    		
     		function pageInit(data, wsId) {
 				var htmlStr = "<h1 style='text-align: center;'>메타 프로파일링 #WS_ID : " + wsId + "</h1>\n";
 				htmlStr += "<div class='table'>\n";
@@ -282,15 +429,21 @@
 				htmlStr += setDetail2(data);
 				
 				htmlStr += "</div>\n";
+				
+				htmlStr += "<div class='table'>\n";
+				htmlStr += "<div class='caption'></div>\n";
+				htmlStr += "<div class='group'>\n";				
+				htmlStr += "</div>\n";
+				htmlStr += "</div>\n";
 				$("#content").append(htmlStr);    			
     			
     			var canvasWidth = $("#header>span:eq(0)").outerWidth() - 20;
-
+                var canvasHtmlStr = "";
+                
         		$(data.columns).each(function(idx, column) {
         			var canvasId = "canvas" + idx;
-        			var canvasHtmlStr = "";
         			
-    				canvasHtmlStr += "<canvas id='" + canvasId +"' style='width: " + canvasWidth + "px;'></canvas>\n";
+    				canvasHtmlStr = "<canvas id='" + canvasId +"' style='width: " + canvasWidth + "px;'></canvas>\n";
     				canvasHtmlStr += "<div class='table'>\n";
     				canvasHtmlStr += "<div class='row'>\n";
     				canvasHtmlStr += "<span class='cellSub colWidth15'>\n";
@@ -311,7 +464,12 @@
     				$("#chart>span").eq(idx).html(canvasHtmlStr);
     				
     				chartDraw(column, canvasId);
-        		});		
+        		});
+        		
+        		canvasWidth = $("div.caption").outerWidth() - 20;
+        	    canvasHtmlStr = "<canvas id='canvasSub' style='height:180px; width: " + canvasWidth + "px;'></canvas>\n";
+        	    $("div.caption").html(canvasHtmlStr);
+        	    getDiffData();
     		}
     		
     		function pageInitNotComplete(wsId) {
@@ -332,16 +490,14 @@
         }         
 
         $(document).ready(function() {
-        	var wsId = getUrlParams().wsId;        
+        	var wsId = getUrlParams().wsId;
+        	var url = "/meta/" + wsId;        
             
             $.ajax({
-				url: "/view/meta",
+				url: url,
 				tyep: "GET",
 				cache: "false",
 				dataType: "json",
-				data: {
-					wsId: wsId
-				},
 				success: function(data, textStatus, jqXHR) {
 					metaProfiling.pageInit(data, wsId);
 				},
@@ -350,7 +506,7 @@
 						metaProfiling.pageInitNotComplete(wsId);
 					}
 				}
-            });
+            });                        
         });
         </script>
         <style type="text/css">
@@ -363,9 +519,11 @@
        		border: 1px solid black;
        	}
 */
-		.table { display: table; width: 100%; }
-		.row { display: table-row; }
-		.cell { display: table-cell; padding: 10px; border-bottom: 1px solid #DDD; min-width: 190px;}
+        .table { display: table; width: 100%; }
+        .group { display: table-row-group }
+        .row { display: table-row; }
+        .cell { display: table-cell; padding: 10px; border-bottom: 1px solid #DDD; min-width: 190px;}
+        .caption { padding: 10px; caption-side: top; display: table-caption; text-align: center; }
 		.cellSub { display: table-cell; }
 		
 		#content { color: darkslategray; }		
@@ -378,7 +536,7 @@
 		#type {
 			text-align: center;
 		}
-		#detail1, #detail2 {
+		#detail1, #detail2, #detail3 {
 			font-size: small;
 		}
 

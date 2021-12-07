@@ -22166,7 +22166,8 @@ webpackJsonp([0], [function(e, t, n) {
             return e.$inject = ["$element", "$translate", "state", "appSettings", "SettingsActionsService"], (0, d.default)(e, [{
                 key: "$onInit",
                 value: function() {
-                    this.initApp(), this.adaptBrandLink(), this.adaptContent()
+                    //this.initApp(), this.adaptBrandLink(), this.adaptContent()
+                    this.initApp(), this.adaptContent()
                 }
             }, {
                 key: "$postLink",

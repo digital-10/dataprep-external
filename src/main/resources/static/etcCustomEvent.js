@@ -311,7 +311,7 @@ async function fnLookNFeel() {
                                   + "<span style=\"margin-left: 30px;\">2021Ⓒ "
                                   + "<img src=\"styles/images/pcn logo.png\" alt=\"pcn logo\" style=\"height: 12px;\">&nbsp;&nbsp;"
                                   + "<img src=\"styles/images/sejong univ logo.png\" alt=\"sejong univ logo\" style=\"height: 12px;\">&nbsp;&nbsp;"
-                                  + "<img src=\"styles/images/digitalship logo.png\" alt=\"digitalship logo\" style=\"height: 12px;\">"
+                                  + "<img src=\"styles/images/digitalship logo.png\" alt=\"digitalship logo\" style=\"height: 20px;\">"
                                   + "</span>"
                                   + "<span style=\"float: right; margin-right: 30px;\">증강분석 빅데이터 프로파일링 공유 시스템</span>"
                                   + "</div>"

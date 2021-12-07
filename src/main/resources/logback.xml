@@ -64,25 +64,31 @@
     
     <logger name="org.talend" level="DEBUG" additivity="false">
         <appender-ref ref="console" /> 
-        <!-- <appender-ref ref="dailyRollingFile" /> -->
-        <!-- <appender-ref ref="dailyRollingFileError" /> -->
+        <appender-ref ref="dailyRollingFile" />
+        <appender-ref ref="dailyRollingFileError" />
+    </logger>
+    
+    <logger name="org.springframework" level="DEBUG" additivity="false">
+        <appender-ref ref="console" />
+        <appender-ref ref="dailyRollingFile" />
+        <appender-ref ref="dailyRollingFileError" />
+    </logger>    
+
+    <logger name="org.quartz" level="ERROR" additivity="false">
+        <appender-ref ref="console" />
+        <appender-ref ref="dailyRollingFile" />
+        <appender-ref ref="dailyRollingFileError" />
     </logger>
     
     <logger name="kr.co.digitalship" level="DEBUG" additivity="false">
         <appender-ref ref="console" />
-        <!-- <appender-ref ref="dailyRollingFile" /> -->
-        <!-- <appender-ref ref="dailyRollingFileError" /> -->
+        <appender-ref ref="dailyRollingFile" />
+        <appender-ref ref="dailyRollingFileError" />
     </logger>
-
-    <logger name="org.springframework" level="DEBUG" additivity="false">
-        <appender-ref ref="console" />
-        <!-- <appender-ref ref="dailyRollingFile" /> -->
-        <!-- <appender-ref ref="dailyRollingFileError" /> -->
-    </logger>    
     
     <root level="ERROR">
         <appender-ref ref="console" />
-        <!-- <appender-ref ref="dailyRollingFile" /> -->
-        <!-- <appender-ref ref="dailyRollingFileError" /> -->
+        <appender-ref ref="dailyRollingFile" />
+        <appender-ref ref="dailyRollingFileError" />
     </root>
 </configuration>

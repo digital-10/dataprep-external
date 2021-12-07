@@ -40435,7 +40435,9 @@
                         try {
                             C(n) ? r.resolve(n(e.value)) : 1 === e.status ? r.resolve(e.value) : r.reject(e.value)
                         } catch (e) {
-                            r.reject(e), t(e)
+                            // r.reject(e), t(e)
+                            // 유효한 캐시가 없는 상태에서 상세화면에 들어갈때 에러 메세지가 방방떠서...막아둠.
+                            r.reject(e)
                         }
                     }
                 }
