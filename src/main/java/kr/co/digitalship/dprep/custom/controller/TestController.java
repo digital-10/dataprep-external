@@ -36,7 +36,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
@@ -124,16 +126,32 @@ public class TestController {
 	 * Pcn Api 테스트
 	 * @return
 	 * @throws Exception
+	 * 
+	 * step은 1 - 전처리완료, 2 - 메타프로파일링 완료
 	 */
 	@ResponseBody
 	@RequestMapping(value = "/test/connect/pcnApi", method = GET, produces = APPLICATION_JSON_VALUE)
-	public String testPcnApi() {
+	public String testPcnApi(@RequestParam(defaultValue = "", required = false) String step, @RequestParam(defaultValue = "", required = false) String wsId) {
 		String result = "Pcn Api Connect Disable";
 		
 		try {
 			String token = pcnApiUtil.getAuth(true);
 			if(StringUtils.isNotBlank(token)) {
-				result = String.format("Pcn Api Connect Enable (%s)", token);
+				if(StringUtils.isNotBlank(step) && StringUtils.isNotBlank(wsId)) {
+					result = pcnApiUtil.updateWorkStatus(token, Integer.parseInt(wsId), Integer.parseInt(step), ""); // 경로를 넣어줘야 할지도.
+					if("success".equals(result)) {
+						result = pcnApiUtil.updateWorkspaceWorkStatus(token, Integer.parseInt(wsId), Integer.parseInt(step));
+						if(!"success".equals(result)) {
+							result = String.format("Pcn Api updateWorkspaceWorkStatus fail (%s)", token);
+						}
+					}
+					else {
+						result = String.format("Pcn Api updateWorkStatus fail (%s)", token);
+					}					
+				}
+				else {
+					result = String.format("Pcn Api Connect Enable (%s)", token);
+				}
 			}
 		} 
 		catch (Exception e) {
@@ -250,8 +268,8 @@ public class TestController {
 		return ip;
 	}	
 	
-	@RequestMapping("/thymeleafTest") 
-	public String thymeleafTest(Model model) {
+	@RequestMapping(value = "/thymeleafTest", method = GET, produces = TEXT_PLAIN_VALUE) 
+	public String thymeleafTest(@RequestParam(defaultValue = "", required = false) String aaa, Model model) {
 		System.out.println("=============================");
 		System.out.println(System.getProperty("java.class.path"));
 		
@@ -265,8 +283,17 @@ public class TestController {
 		System.out.println("=============================");
 		
 		TestVo testModel = new TestVo("view", "thymeleaf") ;
-		model.addAttribute("testModel", testModel); 
+		model.addAttribute("testModel", testModel);
+		model.addAttribute("aaa", aaa); 
 		
 		return "thymeleaf/thymeleafTest"; 
+	}
+
+	// 
+	@RequestMapping(value = "/meta/view/{wsId}", method = GET, produces = TEXT_PLAIN_VALUE) 
+	public String viewMeta(@PathVariable(value = "wsId") String wsId, Model model) {		
+		model.addAttribute("wsId", wsId); 
+		
+		return "thymeleaf/metaProfiling"; 
 	}
 }
