@@ -1,7 +1,9 @@
 package kr.co.digitalship.dprep.custom.redis;
 
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
 
 import javax.annotation.PostConstruct;
 
@@ -151,4 +153,33 @@ public class SpringRedisTemplateUtil {
     public List<Object> getZsetAll(String key) {
     	return new ArrayList<Object>(redisTemplate.opsForZSet().reverseRange(key, 0, -1));
     }
+    
+    /**
+     * keyword 가 포함된 키값 찾기
+     * 
+     * @param keyword :
+     * @param pos : -1 pre, 0 middle, 1 tail
+     * @return
+     */
+    public List<String> getKeys(String keyword, int pos) {
+    	List<String> result = new ArrayList<>();
+    	
+    	String pattern = null;
+    	if(-1 == pos) {
+    		pattern = keyword + "*";
+    	}
+    	else if(0 == pos) {
+    		pattern = "*" + keyword + "*";
+    	}
+    	else {
+    		pattern = "*" + keyword;
+    	}
+    	
+		Set<String> keys = redisTemplate.keys(pattern);
+		Iterator<String> iter = keys.iterator();
+		while(iter.hasNext()){
+			result.add(iter.next());
+		}
+		return result;
+    }    
 }
