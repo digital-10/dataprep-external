@@ -30,13 +30,17 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.talend.dataprep.api.dataset.ColumnMetadata;
 import org.talend.dataprep.api.dataset.DataSetMetadata;
+import org.talend.dataprep.api.dataset.RowMetadata;
 import org.talend.dataprep.api.dataset.row.DataSetRow;
 import org.talend.dataprep.api.dataset.statistics.SemanticDomain;
+import org.talend.dataprep.api.preparation.StepRowMetadata;
 import org.talend.dataprep.dataset.StatisticsAdapter;
 import org.talend.dataprep.dataset.service.analysis.DataSetAnalyzer;
 import org.talend.dataprep.dataset.store.content.ContentStoreRouter;
 import org.talend.dataprep.dataset.store.metadata.DataSetMetadataRepository;
 import org.talend.dataprep.exception.TDPException;
+import org.talend.dataprep.preparation.store.PersistentStep;
+import org.talend.dataprep.preparation.store.PreparationRepository;
 import org.talend.dataprep.quality.AnalyzerService;
 import org.talend.dataquality.common.inference.Analyzer;
 import org.talend.dataquality.common.inference.Analyzers;
@@ -72,6 +76,9 @@ public class BackgroundAnalysisCustom {
     @Autowired
     private DataSetMetadataRepository repository;
 
+    @Autowired
+    protected PreparationRepository preparationRepository;
+    
     /** DataSet content store. */
     @Autowired
     private ContentStoreRouter store;
@@ -96,7 +103,7 @@ public class BackgroundAnalysisCustom {
      * 이후로도 불가할 것 같아 보임. 
      * @see DataSetAnalyzer#analyze
      */
-    public DataSetMetadata analyze(String dataSetId) {
+    public DataSetMetadata analyze(String dataSetId, RowMetadata rowMetadata) {
         if (StringUtils.isEmpty(dataSetId)) {
             throw new IllegalArgumentException("Data set id cannot be null or empty.");
         }
@@ -106,6 +113,10 @@ public class BackgroundAnalysisCustom {
         LOGGER.debug("Integrated Statistics analysis starts ({} / {})", wsId, dataSetId);
 
         DataSetMetadata metadata = repository.get(dataSetId);
+        if(null != rowMetadata) {
+        	metadata.setRowMetadata(rowMetadata);
+        }        
+        
         if (metadata != null) {
             if (!metadata.getLifecycle().schemaAnalyzed()) {
                 LOGGER.debug("[ Integrated Statistics ] Schema information must be computed before quality analysis can be performed. ({} / {})", wsId, dataSetId);
@@ -199,6 +210,86 @@ public class BackgroundAnalysisCustom {
         
         return metadata;
     }
+    
+    /**
+     * 단일 파일에 대한 메타 데이터 생성 (파일 분할가능성이 있기 때문에 기본적으로 생성되는 메타 데이터를 사용할 수 없기 때문에 사)
+     * @param dataSetId
+     * @param filepath
+     * @return
+     */
+    public DataSetMetadata analyze(String dataSetId, String hdfsFilePath, RowMetadata rowMetadata) {
+        if (StringUtils.isEmpty(dataSetId)) {
+            throw new IllegalArgumentException("Data set id cannot be null or empty.");
+        }
+        else if (StringUtils.isEmpty(hdfsFilePath)) {
+        	throw new IllegalArgumentException("File path cannot be null or empty.");
+        }
+
+		String wsId = (String)springRedisTemplateUtil.valueGet("WS_ID");
+		
+        LOGGER.debug("Integrated Statistics analysis starts ({} / {})", wsId, dataSetId);
+
+        DataSetMetadata metadata = repository.get(dataSetId);
+        if(null != rowMetadata) {
+        	metadata.setRowMetadata(rowMetadata);
+        }
+        
+        if (metadata != null) {
+            if (!metadata.getLifecycle().schemaAnalyzed()) {
+                LOGGER.debug("[ Integrated Statistics ] Schema information must be computed before quality analysis can be performed. ({} / {})", wsId, dataSetId);
+                return null; // no acknowledge to allow re-poll.
+            }
+
+            final List<ColumnMetadata> columns = metadata.getRowMetadata().getColumns();
+            if (columns.isEmpty()) {
+                LOGGER.debug("[ Integrated Statistics ] No column information. ({} / {})", wsId, dataSetId);
+                return null;
+            } 
+            else {
+    			try(Analyzer<Analyzers.Result> advancedAnalyzer = analyzerService.full(columns)) {
+					byte[] bytes = hadoopUtil.getByte(hdfsFilePath);
+					InputStream is = new BufferedInputStream(new ByteArrayInputStream(bytes));
+					
+					try(final Stream<DataSetRow> stream = store.streamCustom(metadata, 1000, is)) {
+						try(Analyzer<Analyzers.Result> baseAnalyzer = analyzerService.schemaAnalysis(columns)) {
+    	                    computeStatistics(baseAnalyzer, columns, stream);
+    	                    metadata = saveAnalyzerResults(dataSetId, baseAnalyzer, metadata);
+    	                    
+    	                    LOGGER.debug("[ Integrated Statistics ] Base statistics analysis done. ({} / {})", wsId, dataSetId);        								
+						}
+					}
+					catch(Exception e) {
+	                    LOGGER.warn("[ Integrated Statistics ] Base statistics analysis, ({} / {}) generates an error", wsId, dataSetId, e);
+	                    throw new TDPException(UNABLE_TO_ANALYZE_DATASET_QUALITY, e);        							
+					}
+					finally {
+						is = new BufferedInputStream(new ByteArrayInputStream(bytes));        							
+					}
+					
+					try(final Stream<DataSetRow> stream = store.streamCustom(metadata, -1, is)) {
+	                    computeStatistics(advancedAnalyzer, columns, stream);
+	                    updateNbRecords(metadata, advancedAnalyzer.getResult());
+	                    metadata = saveAnalyzerResults(dataSetId, advancedAnalyzer, metadata);
+					}
+					catch(Exception e) {
+		                LOGGER.warn("[ Integrated Statistics ] Advanced statistics analysis, ({} / {}) generates an error", wsId, dataSetId, e);
+		                throw new TDPException(UNABLE_TO_ANALYZE_DATASET_QUALITY, e);
+		            }
+
+    			}
+    			catch(Exception e) {
+                    LOGGER.warn("[ Integrated Statistics ] Base statistics analysis, ({} / {}) generates an error", wsId, dataSetId, e);
+                    throw new TDPException(UNABLE_TO_ANALYZE_DATASET_QUALITY, e);        				
+    			}
+    			LOGGER.info("[ Integrated Statistics ] Statistics analysis done for ({} / {})", wsId, dataSetId);
+            }
+        } 
+        else {
+            LOGGER.info("[ Integrated Statistics ] Unable to analyze quality. ({} / {})", wsId, dataSetId);
+        }     
+        
+        return metadata;
+    }    
 
     private DataSetMetadata saveAnalyzerResults(String id, Analyzer<Analyzers.Result> analyzer, DataSetMetadata dataSetMetadata) {
         if (dataSetMetadata != null) {
