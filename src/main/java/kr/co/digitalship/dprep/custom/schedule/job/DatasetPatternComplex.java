@@ -3,6 +3,10 @@ package kr.co.digitalship.dprep.custom.schedule.job;
 import java.util.List;
 import java.util.concurrent.locks.ReentrantLock;
 
+import javax.annotation.PostConstruct;
+
+//import org.slf4j.Logger;
+//import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -10,6 +14,8 @@ import org.springframework.stereotype.Component;
 
 import com.google.gson.Gson;
 
+import kr.co.digitalship.dprep.custom.PropertiesUtil;
+import kr.co.digitalship.dprep.custom.Singleton;
 import kr.co.digitalship.dprep.custom.redis.SpringRedisTemplateUtil;
 import kr.co.digitalship.dprep.custom.schedule.util.DprepUtil;
 import kr.co.digitalship.dprep.custom.schedule.vo.MetadataVO;
@@ -19,7 +25,8 @@ import kr.co.digitalship.dprep.custom.schedule.vo.ProcessingInfomationVO;
 @Component
 @ConditionalOnProperty(name = "schedule.job.dataset.pattern", havingValue = "complex")
 public class DatasetPatternComplex extends AbstractDatasetPattern {
-
+	//private static final Logger LOGGER = LoggerFactory.getLogger(DatasetPatternComplex.class);
+	
 	//@Value("${dataprep.node.count:0}")
 	//private int nodeCount;	
 
@@ -41,6 +48,14 @@ public class DatasetPatternComplex extends AbstractDatasetPattern {
 	public DatasetPatternComplex(DprepUtil dprepUtil) {
 		super(dprepUtil);
 	}
+	
+	@PostConstruct
+	public void init() {
+		PropertiesUtil properties = Singleton.getInstance().getPropertiesUtil();
+		
+		nodeNo = Integer.parseInt(properties.getProperty("dataprep.node.no"));
+		dependenceWait = Integer.parseInt(properties.getProperty("schedule.job.dependence.wait"));
+	}		
 	
 	/**
 	 * 할당 파일의 정보 + 메타 정보 
@@ -86,7 +101,9 @@ public class DatasetPatternComplex extends AbstractDatasetPattern {
 		reentrantLock = new ReentrantLock();
 		Gson gson = new Gson();
 		
-		List<String> targetPreparationIds = dprepUtil.getPersistentPreparationId();
+		//List<String> targetPreparationIds = dprepUtil.getPersistentPreparationId();
+        @SuppressWarnings("unchecked")
+		List<String> targetPreparationIds = (List<String>)springRedisTemplateUtil.valueGet("TARGET_PREPARATION_CANDIDATE_" + nodeNo);		
 		CopyTargetPreparationInfoVO copyTargetPreparationInfoVO = null;
 		
 		for(int i = 0, len = listOfProcessingInfomationVO.size(); i < len; i++) {
@@ -100,7 +117,7 @@ public class DatasetPatternComplex extends AbstractDatasetPattern {
 	        		
 	        		copyTargetPreparationInfoVO = dprepUtil.getMappingDP(targetPreparationIds, metadataVO, dependenceWait);
 	        		processingInfomationVO.setCopyTargetPreparationInfoVO(copyTargetPreparationInfoVO);
-
+	        		
 					Thread.sleep(1000);
 				} 
         		catch (InterruptedException e) {
@@ -111,6 +128,7 @@ public class DatasetPatternComplex extends AbstractDatasetPattern {
         		}
         	}
 		}
+		//targetPreparationIds = null; // 빠른 반환을 위해 null 처리함 
 		
 		springRedisTemplateUtil.valueSet("INCLUDE_PREPARATION_TARGET_INFO_" + nodeNo, gson.toJson(listOfProcessingInfomationVO));
 		

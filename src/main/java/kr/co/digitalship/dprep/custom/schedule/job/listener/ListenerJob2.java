@@ -1,7 +1,8 @@
 package kr.co.digitalship.dprep.custom.schedule.job.listener;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
-import java.util.Properties;
 
 import javax.annotation.PostConstruct;
 
@@ -18,7 +19,7 @@ import org.springframework.stereotype.Component;
 import kr.co.digitalship.dprep.custom.PropertiesUtil;
 import kr.co.digitalship.dprep.custom.Singleton;
 import kr.co.digitalship.dprep.custom.redis.SpringRedisTemplateUtil;
-import kr.co.digitalship.dprep.custom.schedule.job.Job3ExportSingle;
+import kr.co.digitalship.dprep.custom.schedule.job.Job3CopyRecipe;
 import kr.co.digitalship.dprep.custom.schedule.util.QuartzConfigUtil;
 
 @Component
@@ -36,30 +37,25 @@ public class ListenerJob2 implements JobListener {
 	private SpringRedisTemplateUtil springRedisTemplateUtil;
 	
 	@Autowired
-	private Job3ExportSingle job3ExportSingle;
+	private Job3CopyRecipe job3CopyRecipe;
 	
 	@Autowired
 	private ListenerJob3 listenerJob3;
 	
-	private final int jobStepIdx = 1;
-	
-	public ListenerJob2() {
-		init();
-	}
+	@Autowired
+	private ListenerTrigger3 listenerTrigger3;
 	
 	@PostConstruct
 	public void init() {
-		if(0 == dependenceWait) {
-			Properties properties = new PropertiesUtil().getProperties();
-			
-			nodeNo = Integer.parseInt(properties.getProperty("dataprep.node.no"));
-			dependenceWait = Integer.parseInt(properties.getProperty("schedule.job.dependence.wait"));  			
-		}
+		PropertiesUtil properties = Singleton.getInstance().getPropertiesUtil();
+		
+		nodeNo = Integer.parseInt(properties.getProperty("dataprep.node.no"));
+		dependenceWait = Integer.parseInt(properties.getProperty("schedule.job.dependence.wait"));  			
 	}	
 	
     @Override
     public String getName() {
-        return getClass().getName();
+        return getClass().getSimpleName();
     }
 
     /**
@@ -69,25 +65,19 @@ public class ListenerJob2 implements JobListener {
      */     
     @Override
     public void jobToBeExecuted(JobExecutionContext context) {
-    	// Job 실행 여부에 대한 최종 판단값
-    	boolean job2IsRunningPossible = true;
-		
- 		@SuppressWarnings("unchecked")
-		List<String> jobStatusNode = (List<String>)springRedisTemplateUtil.valueGet("JOB_STATUS_NODE_" + nodeNo);
- 		
-		if(!"NEW".equals(jobStatusNode.get(jobStepIdx))) {
-			job2IsRunningPossible = false;
- 		}
+    	LOGGER.debug(String.format(context.getJobDetail().getKey().getName() + " jobToBeExecuted (%d)", nodeNo));
 
-        context.getJobDetail().getJobDataMap().put("job2IsRunningPossible", job2IsRunningPossible);
-        context.getJobDetail().getJobDataMap().put("job2IsDonePossible", false);
+		context.getJobDetail().getJobDataMap().put("job2IsDonePossible", false); // Job 종료 가능여부
     }
 
     @Override
     public void jobExecutionVetoed(JobExecutionContext context) {
-        // JobDetail이 실행횔 때 TriggerListener가 실행
-    	//JobKey jobKey = context.getJobDetail().getKey();
-    	//System.out.println(this.getName() + " - jobExecutionVetoed :: " + jobKey);
+    	LOGGER.debug(String.format(context.getJobDetail().getKey().getName() + " jobExecutionVetoed (%d)", nodeNo));
+    	
+		List<String> jobStatusNode = new ArrayList<String>(Arrays.asList(new String[]{"DONE", "END", "END", "END"}));
+		springRedisTemplateUtil.valueSet("JOB_STATUS_NODE_" + nodeNo, jobStatusNode);
+
+		QuartzConfigUtil.deleteJob(context);
     }
 
     /**
@@ -99,16 +89,14 @@ public class ListenerJob2 implements JobListener {
      */       
     @Override
     public void jobWasExecuted(JobExecutionContext context, JobExecutionException jobException) {
+    	LOGGER.debug(String.format(context.getJobDetail().getKey().getName() + " jobWasExecuted (%d)", nodeNo));
+    	
 		if(context.getJobDetail().getJobDataMap().getBoolean("job2IsDonePossible")) {
-			@SuppressWarnings("unchecked")
-			List<String> jobStatusNode = (List<String>)springRedisTemplateUtil.valueGet("JOB_STATUS_NODE_" + nodeNo);
-			jobStatusNode.set(jobStepIdx, "DONE");
+			List<String> jobStatusNode = new ArrayList<String>(Arrays.asList(new String[]{"DONE", "DONE", "NEW", "NEW"}));
 			springRedisTemplateUtil.valueSet("JOB_STATUS_NODE_" + nodeNo, jobStatusNode);
 	
 			QuartzConfigUtil.deleteJob(context);
-			QuartzConfigUtil.scheduleJob(context, job3ExportSingle, listenerJob3);
-			
-			LOGGER.info(String.format("QuartzJobListner - Job2 DONE(%d)", nodeNo));			
+			QuartzConfigUtil.scheduleJob(context, job3CopyRecipe, listenerJob3, listenerTrigger3);
 		}
     }   
 }

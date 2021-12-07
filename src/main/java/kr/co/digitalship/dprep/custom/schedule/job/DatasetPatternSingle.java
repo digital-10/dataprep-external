@@ -2,6 +2,8 @@ package kr.co.digitalship.dprep.custom.schedule.job;
 
 import java.util.List;
 
+import javax.annotation.PostConstruct;
+
 import org.apache.commons.lang.SerializationUtils;
 import org.apache.commons.lang.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,6 +16,8 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonParser;
 import com.google.gson.reflect.TypeToken;
 
+import kr.co.digitalship.dprep.custom.PropertiesUtil;
+import kr.co.digitalship.dprep.custom.Singleton;
 import kr.co.digitalship.dprep.custom.redis.SpringRedisTemplateUtil;
 import kr.co.digitalship.dprep.custom.schedule.util.DprepUtil;
 import kr.co.digitalship.dprep.custom.schedule.vo.MetadataVO;
@@ -41,7 +45,16 @@ public class DatasetPatternSingle extends AbstractDatasetPattern {
 	
 	public DatasetPatternSingle(DprepUtil dprepUtil) {
 		super(dprepUtil);
-	}	
+	}
+	
+	@PostConstruct
+	public void init() {
+		PropertiesUtil properties = Singleton.getInstance().getPropertiesUtil();
+		
+		nodeCount = Integer.parseInt(properties.getProperty("dataprep.node.count"));
+		nodeNo = Integer.parseInt(properties.getProperty("dataprep.node.no"));
+		dependenceWait = Integer.parseInt(properties.getProperty("schedule.job.dependence.wait"));
+	}		
 	
 	/**
 	 * 할당 파일의 정보 + 메타 정보 
@@ -60,6 +73,10 @@ public class DatasetPatternSingle extends AbstractDatasetPattern {
 			springRedisTemplateUtil.valueSet("INCLUDE_META_INFO_0", gson.toJson(listOfProcessingInfomationVO));
 			
 			for(int i = 1, len = nodeCount; i < len; i++) {
+				@SuppressWarnings("unchecked")
+				List<String> jobStatusNode = (List<String>)springRedisTemplateUtil.valueGet("JOB_STATUS_NODE_" + i);
+				if(jobStatusNode.contains("END")) continue;
+				
 				String jsonStr = (String)springRedisTemplateUtil.valueGet("LIST_OF_DATASET_INFO_" + i);
 				
 				if(StringUtils.isNotBlank(jsonStr)) {
@@ -110,7 +127,10 @@ public class DatasetPatternSingle extends AbstractDatasetPattern {
 		
 		if(0 == nodeNo) {
 			// 수정일로 내림차순된 기생성 preparation 아이디 
-			List<String> targetPreparationIds = dprepUtil.getPersistentPreparationId();
+			//List<String> targetPreparationIds = dprepUtil.getPersistentPreparationId();
+	        @SuppressWarnings("unchecked")
+			List<String> targetPreparationIds = (List<String>)springRedisTemplateUtil.valueGet("TARGET_PREPARATION_CANDIDATE_" + nodeNo);
+	        
 			ProcessingInfomationVO processingInfomationVO = listOfProcessingInfomationVO.get(0);
 			MetadataVO metaDataVO = processingInfomationVO.getMetadataVO();
 			
@@ -123,6 +143,10 @@ public class DatasetPatternSingle extends AbstractDatasetPattern {
 			springRedisTemplateUtil.valueSet("INCLUDE_PREPARATION_TARGET_INFO_0", gson.toJson(listOfProcessingInfomationVO));
 			
 			for(int i = 1, len = nodeCount; i < len; i++) {
+				@SuppressWarnings("unchecked")
+				List<String> jobStatusNode = (List<String>)springRedisTemplateUtil.valueGet("JOB_STATUS_NODE_" + i);
+				if(jobStatusNode.contains("END")) continue;
+				
 				String jsonStr = (String)springRedisTemplateUtil.valueGet("INCLUDE_META_INFO_" + i);
 				
 				if(StringUtils.isNotBlank(jsonStr)) {
@@ -138,6 +162,7 @@ public class DatasetPatternSingle extends AbstractDatasetPattern {
 					springRedisTemplateUtil.valueSet("INCLUDE_META_INFO_" + i, gson.toJson(listOfDatasetInfo));
 	            }
 			}			
+			//targetPreparationIds = null; // 빠른 반환을 위해 null 처리함
 		}
 		else {
 			String jsonStr = (String)springRedisTemplateUtil.valueGet("INCLUDE_PREPARATION_TARGET_INFO_" + nodeNo);

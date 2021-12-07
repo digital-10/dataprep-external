@@ -83,7 +83,7 @@ public abstract class AbstractDatasetPattern implements DatasetPatternImpl {
 				try {			                		
             		reentrantLock.lock();
 
-					dprepUtil.exportMulti(processingInfomationVO, metadataVO, dependenceWait);
+					dprepUtil.export(processingInfomationVO, metadataVO, dependenceWait);
 
 					Thread.sleep(1000);			
 				} 

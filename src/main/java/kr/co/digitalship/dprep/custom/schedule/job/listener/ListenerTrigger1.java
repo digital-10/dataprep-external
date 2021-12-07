@@ -2,9 +2,14 @@ package kr.co.digitalship.dprep.custom.schedule.job.listener;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+//import java.util.Date;
 import java.util.List;
+//import java.util.Locale;
+
+import javax.annotation.PostConstruct;
 
 import org.apache.commons.lang.StringUtils;
+//import org.apache.commons.lang.time.DateFormatUtils;
 import org.quartz.JobDataMap;
 import org.quartz.JobExecutionContext;
 import org.quartz.Trigger;
@@ -17,6 +22,8 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.stereotype.Component;
 
 import kr.co.digitalship.dprep.custom.PcnApiUtil;
+import kr.co.digitalship.dprep.custom.PropertiesUtil;
+import kr.co.digitalship.dprep.custom.Singleton;
 import kr.co.digitalship.dprep.custom.redis.SpringRedisTemplateUtil;
 
 import org.quartz.TriggerListener;
@@ -38,6 +45,14 @@ public class ListenerTrigger1 implements TriggerListener {
 	@Autowired
 	private PcnApiUtil pcnApiUtil;
 	
+	@PostConstruct
+	public void init() {
+		PropertiesUtil properties = Singleton.getInstance().getPropertiesUtil();
+		
+		nodeNo = Integer.parseInt(properties.getProperty("dataprep.node.no"));
+		dependenceWait = Integer.parseInt(properties.getProperty("schedule.job.dependence.wait"));
+	}		
+	
 	@Override
 	public String getName() {
 		return getClass().getSimpleName();
@@ -45,9 +60,9 @@ public class ListenerTrigger1 implements TriggerListener {
 
 	@Override
 	public void triggerFired(Trigger trigger, JobExecutionContext context) {
-		LOGGER.debug("===============================================================================");
+		LOGGER.debug("===============================================================================");		
 		LOGGER.debug(String.format(context.getJobDetail().getKey().getName() + " triggerFired (%d)", nodeNo));
-
+		
 		JobDataMap map = context.getJobDetail().getJobDataMap();
 
 		if(map.containsKey("EXECUTION_COUNT")) {
