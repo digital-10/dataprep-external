@@ -296,4 +296,11 @@ public class TestController {
 		
 		return "thymeleaf/metaProfiling"; 
 	}
+	
+	@RequestMapping(value = "/meta/view2/{wsId}", method = GET, produces = TEXT_PLAIN_VALUE) 
+	public String viewMeta2(@PathVariable(value = "wsId") String wsId, Model model) {		
+		model.addAttribute("wsId", wsId); 
+		
+		return "thymeleaf/metaProfiling2"; 
+	}	
 }

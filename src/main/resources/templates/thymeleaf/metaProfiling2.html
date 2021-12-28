@@ -221,6 +221,48 @@
             return htmlStr;         
         }
         
+        // 하단 비교 그래프 영역1
+        function setDiffValidChartDiv(data) {
+            var len = data.columns.length;
+            var htmlStr = "";
+            
+            htmlStr += "<div id='diffValidChart' class='row'>\n";
+            for(var i = 0; i < len; i++) {
+                htmlStr += "<span class='cell' style='border-top: 1px solid #DDD;'></span>\n";
+            }
+            htmlStr += "</div>\n";
+            
+            return htmlStr;
+        }
+        
+        // 하단 비교 그래프 영역2
+        function setDiffInvalidChartDiv(data) {
+            var len = data.columns.length;
+            var htmlStr = "";
+            
+            htmlStr += "<div id='diffInvalidChart' class='row'>\n";
+            for(var i = 0; i < len; i++) {
+                htmlStr += "<span class='cell'></span>\n";
+            }
+            htmlStr += "</div>\n";
+            
+            return htmlStr;
+        }
+        
+        // 하단 비교 그래프 영역3
+        function setDiffEmptyChartDiv(data) {
+            var len = data.columns.length;
+            var htmlStr = "";
+            
+            htmlStr += "<div id='diffEmptyChart' class='row'>\n";
+            for(var i = 0; i < len; i++) {
+                htmlStr += "<span class='cell'></span>\n";
+            }
+            htmlStr += "</div>\n";
+            
+            return htmlStr;
+        }
+        
         // 하단 유효/무효/공백 비교
         function setDetail3(data) {
             var len = data.domain.length;
@@ -278,7 +320,7 @@
             htmlStr += "</div>\n";
             
             return htmlStr;
-        }           
+        }
         
         // 상단 통합 그래프 그리기
         function chartDraw(column, target) {
@@ -400,82 +442,159 @@
                 dataType: "json",
                 success: function(data, textStatus, jqXHR) {
                     if("success" == data.result) {
-                        chartDraw2(data, "canvasSub");
-                        
-                        $("div.group").html(setDetail3(data));                                                  
+                        var canvasIdPrefix = ["diffValidChart", "diffInvalidChart", "diffEmptyChart"];			            
+			            var canvasHtmlStr = "";
+			            
+			            var domain = data.domain;
+			            var before = data.before;
+			            var after = data.after;
+			            var labels = [
+			                ["유효(전)", "유효(후)"],
+			                ["무효(전)", "무효(후)"],
+			                ["공백(전)", "공백(후)"]
+			            ];
+			            var removeFlag = false;
+			            
+			            for(var i = 0, len = canvasIdPrefix.length; i < len; i++) {
+			                var gubun = ["valid", "invalid", "empty"];
+			                
+			                for(var j = 0, jLen = before[gubun[i]].length; j < jLen; j++) {
+			                    if(0 < before[gubun[i]][j]) {
+			                        removeFlag = false;
+			                        break;
+			                    }
+			                    
+			                    if(j == jLen - 1) {
+			                        removeFlag = true;
+			                    }
+			                }
+			                
+			                if(removeFlag) {
+	                            for(var j = 0, jLen = after[gubun[i]].length; j < jLen; j++) {
+	                                if(0 < after[gubun[i]][j]) {
+	                                    removeFlag = false;
+	                                    break;
+	                                }
+	                                
+	                                if(j == jLen - 1) {
+	                                    removeFlag = true;
+	                                }	                            
+	                            }			                
+			                }
+			                
+			                if(removeFlag) {
+			                    $("#" + canvasIdPrefix[i]).remove();
+			                    continue;
+			                }
+			                
+			                var canvasHeight = 0;
+			                $("canvas[id^=canvas]").each(function(idx, obj) {
+			                    if(0 == idx) {
+			                        canvasHeight = $(obj).height();
+			                    }
+			                    else {
+			                        if(canvasHeight > $(obj).height()) {
+			                            canvasHeight = $(obj).height();
+			                        }			                    
+			                    }
+			                });
+			                
+	                        $(domain).each(function(idx) {
+	                            var canvasId = canvasIdPrefix[i] + "Canvas" + idx;
+	                            var canvasWidth = $("#canvas" +idx).width();
+	                            
+	                            canvasHtmlStr = "<canvas id='" + canvasId +"' style='max-width: " + canvasWidth + "px; max-height: " + canvasHeight + "px;'></canvas>\n";
+	                            canvasHtmlStr += "<div class='table'>\n";
+	                            canvasHtmlStr += "<div class='row'>\n";
+	                            canvasHtmlStr += "<span class='cellSub colWidth15'>\n";
+	                            canvasHtmlStr += "<div style='text-align: center; margin-top: 10px;'>\n";
+	                            canvasHtmlStr += "<p style='margin: 0px; font-size: 9pt; min-height: 16px;'>&nbsp;</p>\n";
+	                            canvasHtmlStr += "<p style='margin: 0px; font-size: 9pt; min-height: 16px;'>&nbsp;</p>\n";
+	                            canvasHtmlStr += "</div>\n";
+	                            canvasHtmlStr += "</span>\n";
+	                            canvasHtmlStr += "<span class='cellSub'>\n";
+	                            canvasHtmlStr += "<div style='text-align: center; margin-top: 10px;'>\n";
+	                            canvasHtmlStr += "<p style='margin: 0px; font-size: 9pt; min-height: 16px;'>&nbsp;</p>\n";
+	                            canvasHtmlStr += "<p style='margin: 0px; font-size: 9pt; min-height: 16px;'>&nbsp;</p>\n";
+	                            canvasHtmlStr += "</div>\n";
+	                            canvasHtmlStr += "</span>\n";
+	                            canvasHtmlStr += "</div>\n";
+	                            canvasHtmlStr += "</div>\n";
+	                            
+	                            $("#" + canvasIdPrefix[i] + ">span").eq(idx).html(canvasHtmlStr);
+	                            
+	                            var ctx = document.getElementById(canvasId).getContext("2d");
+	                            var minBarLength = 3;
+	                            /*
+	                            if(0 == before[gubun[i]][idx] || 0 == after[gubun[i]][idx]) {
+	                                minBarLength = 0;
+	                            }
+	                            */
+	                            
+	                            var stackedBarData = {
+	                                labels: labels[i],
+	                                datasets: [
+					                {
+					                    label: 'before',
+					                    data: [before[gubun[i]][idx], after[gubun[i]][idx]],
+					                    backgroundColor: ["#caf270", "#FE6714"],
+					                    hoverBackgroundColor: "#3f51b5",
+					                    borderWidth: 2,
+					                    borderSkipped: "bottom",
+					                    minBarLength: minBarLength,
+					                }
+	                                ]
+	                            };
+	                            
+					            var chart = new Chart(ctx, {
+					                type: "bar",
+					                data: stackedBarData,
+					                options: {
+					                    responsive: true,
+					                    legend: {
+					                        display: false
+					                    },
+					                    hover: { mode: "index", intersect: true },
+					                    scales: {
+					                        xAxes: [{ display: false, stacked: true }],
+					                        yAxes: [{ display: false, stacked: true }]
+					                    },
+					                    tooltips: {
+					                        mode: "index",
+					                        intersect: true,
+					                        display: false,
+					                        callbacks: {
+					                            label: function(tooltipItems, data) {
+					                                $(this._chart.canvas).next("div.table").find("span:eq(0)").find("p:eq(0)").text("구분");                                                                       
+					                                $(this._chart.canvas).next("div.table").find("span:eq(0)").find("p:eq(1)").text("개수");
+					                                
+					                                $(this._chart.canvas).next("div.table").find("span:eq(1)").find("p:eq(0)").text(tooltipItems.label);
+					                                $(this._chart.canvas).next("div.table").find("span:eq(1)").find("p:eq(1)").text(tooltipItems.value);                                
+					
+					                                return;
+					                            }
+					                        },
+					                        custom: function(tooltipModel) {
+					                            tooltipModel.opacity = 0;
+					                        }					                    
+					                    }
+					                }               
+					            });
+	                        });  			            
+			            }
+                    }
+                    else {
+                        $("#diffDiv").remove(); // 전치리 전/후 유효/무효/공백 개수 비교 영역 제거
                     }
                 },
                 error: function(jqXHR, textStatus, errorThrown) {
+                    $("#diffDiv").remove(); // 전치리 전/후 유효/무효/공백 개수 비교 영역 제거
                     /*
                     if(jqXHR.responseJSON.reason.indexOf("Not Complete")) {
                         metaProfiling.pageInitNotComplete(wsId);
                     }
                     */
                 }
-            });
-        }
-        
-        // 하단 비교 그래프 그리기
-        function chartDraw2(data, target) {
-            var ctx = document.getElementById(target).getContext("2d");
-            
-            var stackedBarData = {
-                labels: data.domain,
-                datasets: [                    
-                {
-                    label: '전처리전 유효',
-                    data: data.before.valid,
-                    backgroundColor: "#caf270",
-                    stack: '1'
-                },             
-                {
-                    label: '전처리전 무효',
-                    data: data.before.invalid,
-                    backgroundColor: "#45c490",
-                    stack: '1',
-                }, 
-                {
-                    label: '전처리전 공백',
-                    data: data.before.empty,
-                    backgroundColor: "#008d93",
-                    stack: '1',
-                },                  
-                {
-                    label: '전처리후 유효',
-                    data: data.after.valid,
-                    backgroundColor: "#caf270",
-                    stack: '2'
-                },              
-                {
-                    label: '전처리후 무효',
-                    data: data.after.invalid,
-                    backgroundColor: "#45c490",
-                    stack: '2',
-                }, 
-                {
-                    label: '전처리후 공백',
-                    data: data.after.empty,
-                    backgroundColor: "#008d93",
-                    stack: '2',
-                }                    
-                ]
-            };
-            
-            var chart = new Chart(ctx, {
-                type: "bar",
-                data: stackedBarData,
-                options: {
-                    responsive: true,
-                    legend: {
-                        display: true
-                    },
-                    hover: { mode: "index", intersect: true },
-                    scales: {
-                        xAxes: [{ display: true, stacked: true }],
-                        yAxes: [{ display: true, stacked: true }]
-                    },
-                    maintainAspectRatio: false
-                }               
             });
         }
         
@@ -489,16 +608,21 @@
             htmlStr += setType(data);
             htmlStr += setDetail1(data);
             htmlStr += setDetail2(data);
-            
+         
             htmlStr += "</div>\n";
             
-            htmlStr += "<div class='table'>\n";
-            htmlStr += "<div class='caption'></div>\n";
-            htmlStr += "<div class='group'>\n";             
-            htmlStr += "</div>\n";
-            htmlStr += "</div>\n";
-            $("#content").append(htmlStr);              
+            htmlStr += "<div id='diffDiv' class='table'>\n";
+            htmlStr += "<div class='caption'><h3>전치리 전/후 유효/무효/공백 개수 비교</h3></div>\n";
+            htmlStr += "<div class='group'>\n";
+                                                
+            htmlStr += setDiffValidChartDiv(data);
+            htmlStr += setDiffInvalidChartDiv(data);
+            htmlStr += setDiffEmptyChartDiv(data);               
             
+            htmlStr += "</div>\n";
+            htmlStr += "</div>\n";
+            $("#content").append(htmlStr);
+
             var canvasWidth = $("#header>span:eq(0)").outerWidth() - 20;
             var canvasHtmlStr = "";
             
@@ -528,9 +652,6 @@
                 chartDraw(column, canvasId);
             });
             
-            canvasWidth = $("div.caption").outerWidth() - 20;
-            canvasHtmlStr = "<canvas id='canvasSub' style='height:180px; width: " + canvasWidth + "px;'></canvas>\n";
-            $("div.caption").html(canvasHtmlStr);
             getDiffData();
         }
         
