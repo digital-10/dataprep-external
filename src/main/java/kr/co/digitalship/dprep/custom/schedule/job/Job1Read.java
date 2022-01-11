@@ -10,6 +10,7 @@ import java.util.List;
 
 import javax.annotation.PostConstruct;
 
+import org.apache.commons.lang3.StringUtils;
 import org.apache.hadoop.fs.FileSystem;
 import org.quartz.DisallowConcurrentExecution;
 import org.quartz.JobExecutionContext;
@@ -21,6 +22,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.stereotype.Component;
+
+import com.google.gson.JsonObject;
 
 import kr.co.digitalship.dprep.custom.PcnApiUtil;
 import kr.co.digitalship.dprep.custom.PropertiesUtil;
@@ -50,6 +53,9 @@ public class Job1Read extends CustomQuartzJobBean {
 	
     @Value("${dataset.service.url:}")
     private String[] datasetServiceUrl; 
+    
+	@Value("${pcn.api.enabled:false}")
+	private boolean pcnApiEnabled;    
 	
 	@Autowired
 	private HadoopUtil hadoopUtil;
@@ -79,6 +85,8 @@ public class Job1Read extends CustomQuartzJobBean {
 		hadoopResultRegBasePath = properties.getProperty("hadoop.result.reg.base.path");
 		cronExp = properties.getProperty("schedule.job1.cronExp");
 		datasetServiceUrl = properties.getProperty("dataset.service.url").trim().split("\\s*,\\s*");
+		
+		pcnApiEnabled = new Boolean(properties.getProperty("pcn.api.enabled")).booleanValue();
 
 		setCronExp(cronExp);
 	}		
@@ -92,6 +100,13 @@ public class Job1Read extends CustomQuartzJobBean {
 		try {
 			String wsId = (String)springRedisTemplateUtil.valueGet("WS_ID");
 			String strReadPath = hadoopReadBasePath + "/" + wsId;
+			
+			if(pcnApiEnabled) {
+				String token = pcnApiUtil.getAuth();				
+				JsonObject workspace = pcnApiUtil.getWorkspace(token, Integer.parseInt(wsId));
+				hadoopReadBasePath = workspace.get("body").getAsJsonObject().get("filePath").getAsString();
+				strReadPath = hadoopReadBasePath.substring(0, hadoopReadBasePath.length() - 1);
+			}
 			
 			// 노드별로 나뉜 파일 목록
 			//List<List<String>> fileLists = hadoopUtil.getFileList(fs, strReadPath, null);
@@ -155,7 +170,7 @@ public class Job1Read extends CustomQuartzJobBean {
 			}
 		}
 		catch(Exception e) {
-			
+			e.printStackTrace();
 		}
 		finally {
 			try { if(null != fs) fs.close(); } catch (IOException e) {}

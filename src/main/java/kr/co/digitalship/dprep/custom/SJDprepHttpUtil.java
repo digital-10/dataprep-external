@@ -95,6 +95,9 @@ public class SJDprepHttpUtil {
 	@Value("${dataprep.httpUtil.counter:0}")
 	public static AtomicInteger counter; // 일정 수 이상의 Http Connection 을 맺을 경우 오류가 나서...
 	
+	@Value("${pcn.api.enabled:false}")
+	private boolean pcnApiEnabled; 	
+	
     @Autowired
     protected ObjectMapper objectMapper;
     
@@ -103,6 +106,9 @@ public class SJDprepHttpUtil {
 	
     @Autowired
     private DatasetClient datasetClient;
+    
+	@Autowired
+	private PcnApiUtil pcnApiUtil;    
     
     @Autowired
     protected DataSetMetadataRepository dataSetMetadataRepository;    
@@ -171,8 +177,15 @@ public class SJDprepHttpUtil {
 
     	PropertiesUtil properties = Singleton.getInstance().getPropertiesUtil();
     	
-    	SJDprepHttpUtil.counter = new AtomicInteger(Integer.parseInt(properties.getProperty("dataprep.httpUtil.counter")));
-        
+    	hadoopReadBasePath = properties.getProperty("hadoop.read.base.path");
+    	baseUrl = properties.getProperty("dataset.service.url").trim().split("\\s*,\\s*");
+    	preparationsLocation = properties.getProperty("preparation.store.file.location");
+    	datasetLocation = properties.getProperty("dataset.metadata.store.file.location");
+    	sejongApiExportBasePath = properties.getProperty("sejong.api.export.base.path");
+    	sejongApiTempPath = properties.getProperty("sejong.api.temp.path");
+    	counter = new AtomicInteger(Integer.parseInt(properties.getProperty("dataprep.httpUtil.counter")));    	
+    	pcnApiEnabled = new Boolean(properties.getProperty("pcn.api.enabled")).booleanValue();
+
         return this;
 	}
 	
@@ -202,7 +215,16 @@ public class SJDprepHttpUtil {
 		}
 		
 		if(null == fileList || 0 == fileList.size()) {
-			fileList = hadoopUtil.getFileList(fs, hadoopReadBasePath + "/" + wsId); // 샘플 파일 생성을 위한 후보 파일
+			String strReadPath = hadoopReadBasePath + "/" + wsId;
+			
+            if(pcnApiEnabled) {
+                String token = pcnApiUtil.getAuth();            	
+                JsonObject workspace = pcnApiUtil.getWorkspace(token, Integer.parseInt(wsId));
+                hadoopReadBasePath = workspace.get("body").getAsJsonObject().get("filePath").getAsString();
+                strReadPath = hadoopReadBasePath.substring(0, hadoopReadBasePath.length() - 1);
+            }						
+			
+			fileList = hadoopUtil.getFileList(fs, strReadPath); // 샘플 파일 생성을 위한 후보 파일
 
 			Random random = new Random();
 			InputStream inputStream = hadoopUtil.getInputStream(fs, fileList.get(random.nextInt(fileList.size())));

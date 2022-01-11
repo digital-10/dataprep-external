@@ -55,6 +55,7 @@ import jcifs.smb1.smb1.SmbException;
 import jcifs.smb1.smb1.SmbFile;
 import kr.co.digitalship.dprep.custom.CommonUtil;
 import kr.co.digitalship.dprep.custom.DprepHttpUtil;
+import kr.co.digitalship.dprep.custom.PcnApiUtil;
 import kr.co.digitalship.dprep.custom.PropertiesUtil;
 import kr.co.digitalship.dprep.custom.Singleton;
 import kr.co.digitalship.dprep.custom.redis.SpringRedisTemplateUtil;
@@ -108,6 +109,9 @@ public class DprepUtil {
 	@Value("${schedule.job.dependence.wait:0}")
 	private int dependenceWait;	
 	
+	@Value("${pcn.api.enabled:false}")
+	private boolean pcnApiEnabled; 	
+	
     @Autowired
     private ApplicationContext context;	
 
@@ -115,7 +119,10 @@ public class DprepUtil {
 	private SpringRedisTemplateUtil springRedisTemplateUtil;    
     
     @Autowired
-    private ObjectMapper mapper;	
+    private ObjectMapper mapper;
+    
+	@Autowired
+	private PcnApiUtil pcnApiUtil;    
 	
     private DprepHttpUtil dprepHttpUtil;
     
@@ -149,6 +156,8 @@ public class DprepUtil {
 		hadoopWriteBasePath = properties.getProperty("hadoop.write.base.path");
 		hadoopCopyWriteBasePath = properties.getProperty("hadoop.copy.write.base.path");
 		dependenceWait = Integer.parseInt(properties.getProperty("schedule.job.dependence.wait"));
+		
+		pcnApiEnabled = new Boolean(properties.getProperty("pcn.api.enabled")).booleanValue();
 			
 		return this;
 	}
@@ -725,6 +734,18 @@ public class DprepUtil {
 		String filePath = processingInfomationVO.getFilePath();    	
     	
 		String hadoopWritePath = hadoopWriteBasePath;
+		String hadoopCopyWritePath = hadoopCopyWriteBasePath;
+		
+        String wsId = (String)springRedisTemplateUtil.valueGet("WS_ID");
+
+        String token = pcnApiUtil.getAuth();            
+        if(pcnApiEnabled) {
+            JsonObject workspace = pcnApiUtil.getWorkspace(token, Integer.parseInt(wsId));
+            hadoopReadBasePath = workspace.get("body").getAsJsonObject().get("filePath").getAsString();
+            hadoopReadBasePath = hadoopReadBasePath.substring(0, hadoopReadBasePath.length() - 1);
+            hadoopWritePath = hadoopWritePath + "/" + wsId;
+            hadoopCopyWritePath = hadoopCopyWritePath + "/" + wsId;
+        }        	
 		
 		filePath = filePath.replace(hadoopReadBasePath, hadoopWritePath);
 		
@@ -752,7 +773,7 @@ public class DprepUtil {
 	    			
 					Response response = dprepHttpUtil.callSyncGet(transformationServiceUrl[nodeNo], params, waitTime);
 					// 원본에 없던 임의로 붙은 헤더인 경우 제거
-					if("0".equals(metadataVO.getHeaderNbLines())) {
+					if("0".equals(metadataVO.getHeaderNbLines()) || i > 0) {
 						stringBuffer = CommonUtil.readAndExcludeHeader(stringBuffer, response.getResponseBody());
 					}
 					else {
@@ -762,7 +783,7 @@ public class DprepUtil {
 					if(i == len - 1) {
 						hadoopUtil.write(fs, stringBuffer.toString(), filePath);
 						
-						String dstPath = filePath.replace(hadoopWritePath, hadoopCopyWriteBasePath);
+						String dstPath = filePath.replace(hadoopWritePath, hadoopCopyWritePath);
 						hadoopUtil.copy(filePath, dstPath); // 복제 (세종대용 복제)						
 					}
 					Thread.sleep(1000);

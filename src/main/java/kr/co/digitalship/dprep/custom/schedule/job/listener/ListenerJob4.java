@@ -110,6 +110,9 @@ public class ListenerJob4 implements JobListener {
 	@Value("${pipeline.run.api.path:}")
 	private String pipelineRunApiPath;
 	
+	@Value("${pcn.api.enabled:false}")
+	private boolean pcnApiEnabled; 	
+	
 	@Autowired
 	private SpringRedisTemplateUtil springRedisTemplateUtil;
 	
@@ -168,6 +171,8 @@ public class ListenerJob4 implements JobListener {
 		pipelineRunApiHost = properties.getProperty("pipeline.run.api.host");
 		pipelineRunApiPort = properties.getProperty("pipeline.run.api.port");
 		pipelineRunApiPath = properties.getProperty("pipeline.run.api.path");
+		
+		pcnApiEnabled = new Boolean(properties.getProperty("pcn.api.enabled")).booleanValue();
         
         gson = new Gson();		
 	}
@@ -320,15 +325,25 @@ public class ListenerJob4 implements JobListener {
 				// 처리가 끝난 원본의 이동
 				List<ExportResultVO> exportResultVOs = new ArrayList<>(Arrays.asList(exportInfo.values().toArray(new ExportResultVO[exportInfo.keySet().size()])));
 				
+	            token = pcnApiUtil.getAuth();
+	            if(pcnApiEnabled) {
+	                JsonObject workspace = pcnApiUtil.getWorkspace(token, Integer.parseInt(wsId));
+	                hadoopReadBasePath = workspace.get("body").getAsJsonObject().get("filePath").getAsString();
+	                hadoopReadBasePath = hadoopReadBasePath.substring(0, hadoopReadBasePath.length() - 1);
+	            }
+				
 				for(int i = 0, len = exportResultVOs.size(); i < len; i++) {
 					String srcPath = exportResultVOs.get(i).getFilePath();					
-					String dstPath = hadoopCopyOriginBasePath;					
+					String dstPath = hadoopCopyOriginBasePath;
+					if(pcnApiEnabled) {
+						dstPath = dstPath + "/" + wsId;
+					}
 					
 					dstPath = srcPath.replace(hadoopReadBasePath, dstPath);
 							
 					hadoopUtil.copy(srcPath, dstPath);
 					//hadoopUtil.copy(srcPath, dstPath.replace("Origin", "Pipeline"));
-					hadoopUtil.delete(fs, srcPath);
+					//hadoopUtil.delete(fs, srcPath);
 				}
 				
 				// 목록 파일을 적재...적재할때는 기존 파일의 목록을 읽어서...추가로 붙임...

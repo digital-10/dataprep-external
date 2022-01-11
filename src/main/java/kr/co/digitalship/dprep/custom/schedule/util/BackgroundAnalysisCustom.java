@@ -60,9 +60,6 @@ public class BackgroundAnalysisCustom {
     /** This class' logger. */
     private static final Logger LOGGER = LoggerFactory.getLogger(BackgroundAnalysisCustom.class);   
     
-	//@Value("${hadoop.read.base.path:}")
-    //private String hadoopReadBasePath;    
-    
 	@Value("${hadoop.write.base.path:}")
     private String hadoopWriteBasePath;
 	
