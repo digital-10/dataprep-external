@@ -342,7 +342,9 @@
 	                    if("success" == data.result) {
                             chartDraw2(data, "canvasSub");
                             
-                            $("div.group").html(setDetail3(data));                            	                    
+                            $("div.group").html(setDetail3(data));
+                            
+                            $("div#diffDiv").css("margin-bottom", "65px");
 	                    }
 	                },
 	                error: function(jqXHR, textStatus, errorThrown) {
@@ -419,8 +421,8 @@
             }
     		
     		function pageInit(data, wsId) {
-				var htmlStr = "<h1 style='text-align: center;'>메타 프로파일링 #WS_ID : " + wsId + "</h1>\n";
-				htmlStr += "<div class='table'>\n";
+				//var htmlStr = "<h1 style='text-align: center;'>메타 프로파일링 #WS_ID : " + wsId + "</h1>\n";
+				var htmlStr = "<div id='stats' class='table'>\n";
 				
 				htmlStr += setHeader(data);
 				htmlStr += setChartDiv(data);
@@ -430,7 +432,7 @@
 				
 				htmlStr += "</div>\n";
 				
-				htmlStr += "<div class='table'>\n";
+				htmlStr += "<div id='diffDiv' class='table'>\n";
 				htmlStr += "<div class='caption'></div>\n";
 				htmlStr += "<div class='group'>\n";				
 				htmlStr += "</div>\n";
@@ -473,8 +475,9 @@
     		}
     		
     		function pageInitNotComplete(wsId) {
-    			var htmlStr = "<h1 style='text-align: center;'>메타 프로파일링 #WS_ID : " + wsId + " 은 완료되지 않은 작업입니다.</h1>\n";
-    			$("#content").append(htmlStr);
+    			//var htmlStr = "<h1 style='text-align: center;'>메타 프로파일링 #WS_ID : " + wsId + " 은 완료되지 않은 작업입니다.</h1>\n";
+    			//$("#content").append(htmlStr);
+    			$("div#integrated_header>span").text("메타 프로파일링 #WS_ID : " + wsId + " 은 완료되지 않은 작업입니다.");
     		}
     		
     		return {
@@ -493,6 +496,26 @@
         	var wsId = getUrlParams().wsId;
         	var url = "/meta/" + wsId;        
             
+	        jQuery("body").css("background-color", "#F8F8FB");
+	        //  헤더 & 풋터 삽입
+	        if(!jQuery("div#integrated_header")[0] && !jQuery("div#integrated_footer")[0]) {
+	            // 기본 적으로 Dom 변경에 따른 영향을 받지 않기 위해 body 밖에 둠.
+	            let integrated_header_tag = "<div id=\"integrated_header\" style=\"position: fixed; top: 0; min-width: 70px; width: 100%; line-height: 70px; background-color: #2a3042; font-size: 17px; color: white;\">"
+	                                      + "<span style=\"margin-left: 30px;\">메타 프로파일링 #WS_ID : " + wsId + "</span>"
+	                                      + "</div>"; 
+	            let integrated_footer_tag = "<div id=\"integrated_footer\" style=\"z-index: 1000; position: fixed; bottom: 0; min-height: 60px; width: 100%; line-height: 60px; background-color: #f2f2f5; font-size: 0.5rem; color: #74788d;\">"
+	                                      + "<span style=\"margin-left: 30px;\">2021Ⓒ "
+	                                      + "<img src=\"/styles/images/pcn logo.png\" alt=\"pcn logo\" style=\"height: 12px;\">&nbsp;&nbsp;"
+	                                      + "<img src=\"/styles/images/sejong univ logo.png\" alt=\"sejong univ logo\" style=\"height: 12px;\">&nbsp;&nbsp;"
+	                                      + "<img src=\"/styles/images/digitalship logo.png\" alt=\"digitalship logo\" style=\"height: 20px;\">"
+	                                      + "</span>"
+	                                      + "<span style=\"float: right; margin-right: 30px;\">증강분석 빅데이터 프로파일링 공유 시스템</span>"
+	                                      + "</div>"
+	                            
+	            jQuery("body").after(integrated_header_tag)
+	                          .after(integrated_footer_tag);
+	        }             
+            
             $.ajax({
 				url: url,
 				tyep: "GET",
@@ -500,6 +523,8 @@
 				dataType: "json",
 				success: function(data, textStatus, jqXHR) {
 					metaProfiling.pageInit(data, wsId);
+					
+					$("div#stats").css("margin-top", "75px");
 				},
 				error: function(jqXHR, textStatus, errorThrown) {
 					if(jqXHR.responseJSON.reason.indexOf("Not Complete")) {
@@ -510,6 +535,14 @@
         });
         </script>
         <style type="text/css">
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap');
+        * {
+            font-family: Poppins, sans-serif, FontAwesome !important
+        }
+        img { 
+            vertical-align: middle;
+            border: 0; 
+        }          
 /*        
        	p {
        		margin-top: 0px;
