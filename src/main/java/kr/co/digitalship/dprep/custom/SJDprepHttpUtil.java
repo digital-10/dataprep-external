@@ -220,6 +220,10 @@ public class SJDprepHttpUtil {
             if(pcnApiEnabled) {
                 String token = pcnApiUtil.getAuth();            	
                 JsonObject workspace = pcnApiUtil.getWorkspace(token, Integer.parseInt(wsId));
+				if(null == workspace.get("body")) {
+					return;
+				}
+				
                 hadoopReadBasePath = workspace.get("body").getAsJsonObject().get("filePath").getAsString();
                 strReadPath = hadoopReadBasePath.substring(0, hadoopReadBasePath.length() - 1);
             }						
