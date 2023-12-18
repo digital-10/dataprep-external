@@ -1,4 +1,4 @@
-;s;spackage kr.co.d;s;s;sship.dprep.custom.controller;
+;s;s;spackage kr.co.d;s;s;sship.dprep.custom.controller;
 
 import static org.springframework.web.bind.annotation.RequestMethod.GET;
 import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
